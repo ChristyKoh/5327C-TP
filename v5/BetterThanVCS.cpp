@@ -3,6 +3,7 @@
 #define LEFT -1
 #define RED -1
 #define BLUE 1
+#define FRONT 1
 #define BACK -1
 
 //namespace vex;
@@ -48,6 +49,30 @@ void sleep(int t) {
     vex::task::sleep(t);
 }
 
+void toggleLEDs() {
+    if(Brain.timer(vex::timeUnits::msec) > 300){
+        areLEDsOn = !areLEDsOn;
+        if(areLEDsOn){
+            LED.state(100,vex::percentUnits::pct);
+            LEDa.state(100,vex::percentUnits::pct);
+            LEDb.state(100,vex::percentUnits::pct);
+            LEDc.state(100,vex::percentUnits::pct);
+            LEDd.state(100,vex::percentUnits::pct);
+            LEDe.state(100,vex::percentUnits::pct);
+            LEDf.state(100,vex::percentUnits::pct);
+        } else {
+            LED.state(0,vex::percentUnits::pct);
+            LEDa.state(0,vex::percentUnits::pct);
+            LEDb.state(0,vex::percentUnits::pct);
+            LEDc.state(0,vex::percentUnits::pct);
+            LEDd.state(0,vex::percentUnits::pct);
+            LEDe.state(0,vex::percentUnits::pct);
+            LEDf.state(0,vex::percentUnits::pct);
+        }
+        Brain.resetTimer();
+    }
+}
+
 void toggleMode() {
     if(Brain.timer(vex::timeUnits::msec) > 300){
         isBallMode = -isBallMode;
@@ -56,146 +81,132 @@ void toggleMode() {
         } else {
             Brain.Screen.printAt(10,40,"Mode: Cap Mode %b", isBallMode);
         }
+        LED.state(100,vex::percentUnits::pct);
+        areLEDsOn = true;
         Brain.resetTimer();
     }
 }
 
+void delayLEDsOff() {
+    vex::task::sleep(500);
+    LED.state(0,vex::percentUnits::pct);
+    areLEDsOn = false;
+}
+
 void intake() {
-    INTAKE.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
-    INTAKE2.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
+    Intake.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
+    Intake2.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
     Brain.Screen.printAt(10,40,"Intake running at 200rpm");
 }
 
 void outtake() {
-    INTAKE.spin(vex::directionType::rev, 200, vex::velocityUnits::rpm);
-    INTAKE2.spin(vex::directionType::rev, 200, vex::velocityUnits::rpm);
+    Intake.spin(vex::directionType::rev, 200, vex::velocityUnits::rpm);
+    Intake2.spin(vex::directionType::rev, 200, vex::velocityUnits::rpm);
     Brain.Screen.printAt(10,40,"Intake running at 200rpm");
 }
 
 void intakeStop() {
-    INTAKE.stop();
-    INTAKE2.stop();
+    Intake.stop();
+    Intake2.stop();
     Brain.Screen.printAt(10,40,"Intake stopped.");
 }
 
 void catgo() {
-    CATAPULT.spin(vex::directionType::fwd,200,vex::velocityUnits::rpm);
+    Catapult.spin(vex::directionType::fwd,200,vex::velocityUnits::rpm);
 }
 
 void catstop() {
-    CATAPULT.stop();
+    Catapult.stop();
 }
 
 void flipUp() {
-    FLIPPER.spin(vex::directionType::fwd, 80, vex::velocityUnits::rpm);
+    Flipper.spin(vex::directionType::fwd, 80, vex::velocityUnits::rpm);
     Brain.Screen.printAt(10,40,"Flipper running at 200rpm");
-    //if(FLIPPER.rotation(vex::rotationUnits::deg) < 5) FLIPPER.startRotateTo(0,vex::rotationUnits::deg);
+    //if(Flipper.rotation(vex::rotationUnits::deg) < 5) Flipper.startRotateTo(0,vex::rotationUnits::deg);
 }
 
 void flipDown() {
-    FLIPPER.spin(vex::directionType::rev, 80, vex::velocityUnits::rpm);
+    Flipper.spin(vex::directionType::rev, 80, vex::velocityUnits::rpm);
     Brain.Screen.printAt(10,40,"Flipper running at 200rpm");
 }
 
 void flipStop() {
-    FLIPPER.stop();
-    flipRot = FLIPPER.rotation(vex::rotationUnits::deg);
+    Flipper.stop();
+    flipRot = Flipper.rotation(vex::rotationUnits::deg);
 }
 
 void flipOne() {
     flipRot-=180;
     Brain.Screen.printAt(10,80,"FlipRot is ", flipRot);
-    FLIPPER.startRotateTo(flipRot, vex::rotationUnits::deg, 75, vex::velocityUnits::pct);
+    Flipper.startRotateTo(flipRot, vex::rotationUnits::deg, 75, vex::velocityUnits::pct);
 }
 
 void drive(int vel) { // + fwd - rev
-    B_B_L.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-    B_B_R.spin(vex::directionType::rev,isBallMode*vel,vex::velocityUnits::rpm);
-    B_M_L.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-    B_M_R.spin(vex::directionType::rev,isBallMode*vel,vex::velocityUnits::rpm);
-    B_C_R.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-    B_C_L.spin(vex::directionType::rev,isBallMode*vel,vex::velocityUnits::rpm);
+    FL_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
+    FR_Base.spin(vex::directionType::rev,isBallMode*vel,vex::velocityUnits::rpm);
+    BL_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
+    BR_Base.spin(vex::directionType::rev,isBallMode*vel,vex::velocityUnits::rpm);
 }
 
 void driveRot(int deg, bool waitForCompletion=false, int vel=200) {
     if(waitForCompletion){
-        B_B_L.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_B_R.rotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_L.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_R.rotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_R.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_L.rotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FL_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FR_Base.rotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BL_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BR_Base.rotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
     } else {
-        B_B_L.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_B_R.startRotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_L.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_R.startRotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_R.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_L.startRotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FL_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FR_Base.startRotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BL_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BR_Base.startRotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
     }
 }
 
 void driveTo(int deg, bool waitForCompletion=false, int vel=200) {
     if(waitForCompletion){
-        B_B_L.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_B_R.rotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_L.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_R.rotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_R.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_L.rotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FL_Base.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FR_Base.rotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BL_Base.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BR_Base.rotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
     } else {
-        B_B_L.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_B_R.startRotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_L.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_R.startRotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_R.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_L.startRotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FL_Base.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FR_Base.startRotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BL_Base.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BR_Base.startRotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
     }
 }
 
 void strafe(int vel) { //+ right - left
-    B_B_L.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-    B_B_R.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-    B_M_L.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-    B_M_R.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-    B_C_R.spin(vex::directionType::rev,isBallMode*vel,vex::velocityUnits::rpm);
-    B_C_L.spin(vex::directionType::rev,isBallMode*vel,vex::velocityUnits::rpm);
+    FL_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
+    FR_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
+    BL_Base.spin(vex::directionType::rev,isBallMode*vel,vex::velocityUnits::rpm);
+    BR_Base.spin(vex::directionType::rev,isBallMode*vel,vex::velocityUnits::rpm);
 }
 
 void strafeRot(int deg, bool waitForCompletion=false, int vel=200) {
     if(waitForCompletion){
-        B_B_L.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_B_R.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_L.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_R.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_R.rotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_L.rotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FL_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FR_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BL_Base.rotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BR_Base.rotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
     } else {
-        B_B_L.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_B_R.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_L.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_R.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_R.startRotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_L.startRotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FL_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FR_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BL_Base.startRotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BR_Base.startRotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
     }
 }
 
 int stepVel;
 int stepDelay;
 
-void accel(int targetVel, int time=70, int step=10, bool isStrafe=false, bool isRot=false) { //speed up from zero to goal
+void accel(int targetVel, int time=70, int step=10, bool isStrafe=false) { //speed up from zero to goal
     stepVel = 0;
     stepDelay = time/step;
     if(targetVel<0) step = -step;
     if(isStrafe){
         while (abs(stepVel) < abs(targetVel)) {
             strafe(stepVel);
-            sleep(stepDelay); //wait stepDelay secs before 
-            stepVel += step;
-        }
-    } else if(isRot){
-        while (abs(stepVel) < abs(targetVel)) {
-            driveRot(stepVel);
             sleep(stepDelay); //wait stepDelay secs before 
             stepVel += step;
         }
@@ -216,72 +227,58 @@ void driveAccel(int vel, int timeAcc, int timeDrive) {
     drive(0);
 }
 
-void rotAccel(int vel, int timeAcc, int timeDrive) {
-    //accel to target speed in timeAcc ms
-    //drive for timeDrive additional ms
-    accel(vel, timeAcc, 10, false, true);
-    sleep(timeDrive);
+void driveDecel(int vel, int timeAcc) {
+    //decel from target speed in timeAcc ms
+    accel(vel, timeAcc, -10);
     drive(0);
 }
 
 void strafeAccel(int vel, int timeAcc, int timeDrive) {
-    accel(vel, timeAcc, 10, true, false);
+    accel(vel, timeAcc, 10, true);
     sleep(timeDrive);
     drive(0);
 }
 
 void rotFast(int vel) { //+ right - left
-    B_B_L.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-    B_B_R.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-    B_M_L.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-    B_M_R.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-    B_C_R.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-    B_C_L.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
+    FL_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
+    FR_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
+    BL_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
+    BR_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
 }
 
 void rot(int deg, bool waitForCompletion=false, int vel=200) { 
     if(waitForCompletion){
-        B_B_L.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_B_R.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_L.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_R.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_R.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_L.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FL_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FR_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BL_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BR_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
     } else {
-        B_B_L.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_B_R.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_L.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_R.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_R.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_L.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FL_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FR_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BL_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BR_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
     }
 }
 
 void rotTo(int deg, bool waitForCompletion=false, int vel=200) { 
     if(waitForCompletion){
-        B_B_L.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_B_R.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_L.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_R.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_R.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_L.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FL_Base.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FR_Base.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BL_Base.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BR_Base.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
     } else {
-        B_B_L.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_B_R.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_L.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_M_R.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_R.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-        B_C_L.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FL_Base.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        FR_Base.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BL_Base.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+        BR_Base.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
     }
 }
 
 void stopBase() {
-    B_B_L.stop();
-    B_B_R.stop();
-    B_M_L.stop();
-    B_M_R.stop();
-    B_C_R.stop();
-    B_C_L.stop();
+    FL_Base.stop();
+    FR_Base.stop();
+    BL_Base.stop();
+    BR_Base.stop();
 }
 
 void rotFor(int vel, int time){
@@ -312,58 +309,29 @@ void align() {
 void trebuchet() {
     if(isCatapultReady) {
         //catapult down, fire
-       // CATAPULT.RotateFor(1,vex::rotationUnits::rev,200,vex::velocityUnits::rpm);
-        CATAPULT.spin(vex::directionType::fwd, 200,vex::velocityUnits::rpm);
+       // Catapult.RotateFor(1,vex::rotationUnits::rev,200,vex::velocityUnits::rpm);
+        Catapult.spin(vex::directionType::fwd, 200,vex::velocityUnits::rpm);
         Brain.Screen.printAt(10,40, "Catapult Firing");
         sleep(500);
-        CATAPULT.stop();
+        Catapult.stop();
         isCatapultReady = false;
     } else {
         //catapult up, start moving arm
-        CATAPULT.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
+        Catapult.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
         Brain.Screen.printAt(10,40, "Catapult Running");
         while(Bumper.value() == 1){
             sleep(20);
         }
-        CATAPULT.stop();
+        Catapult.stop();
         isCatapultReady = true;
     }
 }
 
-/*
-void brake() {
-    if(isBraking) {
-        //catapult down, fire
-       // CATAPULT.RotateFor(1,vex::rotationUnits::rev,200,vex::velocityUnits::rpm);
-        CATAPULT.spin(vex::directionType::rev, 200,vex::velocityUnits::rpm);
-        Brain.Screen.printAt(10,40, "Releasing Brake");
-        sleep(200);
-        CATAPULT.stop();
-        isBraking = false;
-    } else {
-        //catapult up, start moving arm
-        CATAPULT.spin(vex::directionType::rev, 200, vex::velocityUnits::rpm);
-        Brain.Screen.printAt(10,40, "Releasting Brake");
-        while(Braker.value() == 1){
-            sleep(320);
-        }
-        CATAPULT.stop();
-        isBraking = true;
-    }
-}*/
-
 void trebStop() {
     //called when bumper is pressed
-    CATAPULT.stop();
+    Catapult.stop();
     Brain.Screen.printAt(10,40, "Ready Position Reached");
     isCatapultReady = true;
-}
-
-void brakeStop() {
-    //called when bumper is pressed
-    CATAPULT.stop();
-    Brain.Screen.printAt(10,40, "Brake Down");
-    isBraking = true;
 }
 ///////////////////////////////////////// TASKS /////////////////////////////////////////////////////////////////
 
@@ -376,41 +344,60 @@ int launchCallback() {
     return 1;
 }
 
-/*
-int brakeCallback() {
+int FRCallback() {
     for(;;) {
-        Controller.ButtonL1.pressed(brake);
-        //Brain.Screen.printAt(10,150,"Launch Callback Running...");
-        vex::task::sleep(100);
+        FR_Base.spin(vex::directionType::rev,isBallMode*1.6*(FB - isBallMode*T - LR),vex::velocityUnits::rpm);
+		vex::task::sleep(20);
     }
-    return 1;
-}*/
+	return 1;
+}
+int FLCallback() {
+    for(;;) {
+        FL_Base.spin(vex::directionType::fwd,isBallMode*1.6*(FB + isBallMode*T + LR),vex::velocityUnits::rpm);
+		vex::task::sleep(20);
+    }
+	return 1;
+}
+int BRCallback() {
+    for(;;) {
+        BR_Base.spin(vex::directionType::rev,isBallMode*1.6*(FB - isBallMode*T + LR),vex::velocityUnits::rpm);
+		vex::task::sleep(20);
+    }
+	return 1;
+}
+int BLCallback() {
+    for(;;) {
+        BL_Base.spin(vex::directionType::fwd,isBallMode*1.6*(FB + isBallMode*T - LR),vex::velocityUnits::rpm);
+		vex::task::sleep(20);
+    }
+	return 1;
+}
 
-/*int brakeBase() {
+int brakeBase() {
     for(;;){
         if(isBraking){
-            B_B_L.startRotateTo(BLpos,vex::rotationUnits::deg, 200, vex::velocityUnits::rpm);
-            B_B_R.startRotateTo(BRpos,vex::rotationUnits::deg, 200, vex::velocityUnits::rpm);
-            B_C_R.startRotateTo(CRpos,vex::rotationUnits::deg, 200, vex::velocityUnits::rpm);
-            B_C_L.startRotateTo(CLpos,vex::rotationUnits::deg, 200, vex::velocityUnits::rpm);
-            Brain.Screen.printAt(10, 120, "BL: %.2f", B_B_L.rotation(vex::rotationUnits::deg));
+            FL_Base.startRotateTo(BLpos,vex::rotationUnits::deg, 200, vex::velocityUnits::rpm);
+            FR_Base.startRotateTo(BRpos,vex::rotationUnits::deg, 200, vex::velocityUnits::rpm);
+            BL_Base.startRotateTo(CRpos,vex::rotationUnits::deg, 200, vex::velocityUnits::rpm);
+            BR_Base.startRotateTo(CLpos,vex::rotationUnits::deg, 200, vex::velocityUnits::rpm);
+            Brain.Screen.printAt(10, 120, "BL: %.2f", FL_Base.rotation(vex::rotationUnits::deg));
         }
         sleep(10);
     }
     return 1;
-}*/
+}
 
 int mainCallback() {
     for(;;){
-      //Controller.ButtonLeft.pressed(toggleLEDs);  
-      
+      Controller.ButtonUp.pressed(toggleLEDs);
+        
       Controller.ButtonRight.pressed(toggleMode);
-      //Controller.ButtonRight.released(delayLEDsOff);
+      Controller.ButtonRight.released(delayLEDsOff);
 
       Controller.ButtonR2.pressed(intake);
       Controller.ButtonL2.pressed(outtake);
       Controller.ButtonR2.released(intakeStop);
-      Controller.ButtonL2.released(intakeStop);
+      Controller.ButtonB.released(intakeStop);
       Controller.ButtonA.pressed(catgo);
       Controller.ButtonA.released(catstop);
       
@@ -419,30 +406,27 @@ int mainCallback() {
       Controller.ButtonX.pressed(flipDown);
       Controller.ButtonX.released(flipStop);
       Controller.ButtonL1.pressed(flipOne);
-        
-      Brain.Screen.printAt(0,150,"Gyro: %.2f", Gyro.value(vex::rotationUnits::deg));
-      Brain.Screen.printAt(0, 120, "TESTING");
-        
-      sleep(20);
     }
 }
 
 vex::task launchTask = vex::task(launchCallback);
-//vex::task brakeTask = vex::task(brakeCallback);
 vex::task mainTask = vex::task(mainCallback);
-//vex::task baseTask = vex::task(brakeBase);
+vex::task BLTask = vex::task(BLCallback);
+vex::task BRTask = vex::task(BRCallback);
+vex::task FRTask = vex::task(FRCallback);
+vex::task FLTask = vex::task(FLCallback);
 
 void toggleBrake() {
     if(Brain.timer(vex::timeUnits::msec) > 300){
         isBraking = !isBraking;
         if(isBraking) {
-            BLpos = B_B_L.rotation(vex::rotationUnits::deg);
-            BRpos = B_B_R.rotation(vex::rotationUnits::deg);
-            CRpos = B_C_R.rotation(vex::rotationUnits::deg);
-            CLpos = B_C_L.rotation(vex::rotationUnits::deg);
+            BLpos = FL_Base.rotation(vex::rotationUnits::deg);
+            BRpos = FR_Base.rotation(vex::rotationUnits::deg);
+            CRpos = BL_Base.rotation(vex::rotationUnits::deg);
+            CLpos = BR_Base.rotation(vex::rotationUnits::deg);
             //baseTask.resume();
             Brain.Screen.printAt(10,70,"Braking: %f", BLpos);
-            Brain.Screen.printAt(10,100,"rotation: %f", B_B_L.rotation(vex::rotationUnits::deg));
+            Brain.Screen.printAt(10,100,"rotation: %f", FL_Base.rotation(vex::rotationUnits::deg));
         } else {
             //baseTask.suspend();
             Brain.Screen.printAt(10,70,"Braking: %b", isBraking);
@@ -453,76 +437,121 @@ void toggleBrake() {
 
 ///////////////////////////////////////// AUTONS /////////////////////////////////////////////////////////////////
 
-void park() {
-    // drives forward until parks
-    while(Gyro.value(vex::rotationUnits::deg) > 10) {
-        drive(100);
-    }
-    drive(0);
-}
-
-void newHopefullyReliable(int side = RIGHT) {
-    intake();
-    //driveAccel(200, 400, 600);
-    driveRot(1160);
-    sleep(1500);
-    driveRot(-1140);
-    sleep(1500);
-    intakeStop();
-    drive(0);
-}
-
 void oleReliable(int side = RIGHT) {
     // shoot preload, toggle bottom flag
-    //isCatapultReady = true;
+    isCatapultReady = true;
     intake();
-    driveFor(200, 700);
-    //driveAccel(150, 1000, 600);
-    driveFor(-200, 1000);
+    if(side == RIGHT) driveAccel(150, 1000, 600); // nab 2nd ball
+    else if(side == LEFT) driveAccel(150, 1000, 400); // nab 2nd ball
+    sleep(300);
+    driveAccel(-150, 1000, 600);    // drive back to wall
+    // IF RED HITTING THE WALL COMING BACK IS AN ISSUE: 
+    // COMMENT ABOVE AND UNCOMMENT BELOW
+    //if(side == RIGHT) driveAccel(-150, 1000, 600); // drive back to wall
+    //else if(side == LEFT) driveAccel(-150, 1000, 400); // drive back to wall
     sleep(300);
     intakeStop();
-    driveFor(50, 200);
-    rot(side * 275, false, 50); 
+    rot(side * 380);                // turn to wall
     sleep(1000);
-    //strafeFor(side * 200, 400); //slide to wall
-    //strafeAccel(vel, timeacc, timeafteracc)
-    //strafeAccel(side * -100, 700, 0);
-    //driveAccel(100, 300, 700);
-    driveFor(120, 700);
-    rot(side * -10);
-    sleep(200); 
-    trebuchet(); // launch ball
-    sleep(200); 
-    trebuchet();
-    sleep(200); 
-    rot(side * 15);
-    trebuchet();
+    strafeFor(side * 200, 400);     // align against wall
+    strafeAccel(side * -100, 700, 0);                   // come out from wall
+    if(side == RIGHT) driveAccel(100, 300, 700);        // fwd to double shot posn
+    else if(side == LEFT) driveAccel(100, 300, 550);    // fwd to double shot posn
+    rot(side * -30);                // turn slightly to aim
+    sleep(200);
+    trebuchet();                    // launch ball
+    if(side == RIGHT) rot(35);      // turn to toggle bottom flag
+    else if(side == LEFT) rot(-25); // turn to toggle bottom flag
+    trebuchet();                    // ready catapult
     sleep(200);
     intake();
-    driveAccel(150, 1000, 500);
+    driveAccel(150, 1000, 500);     // forward to toggle flag
     sleep(200);
-    driveAccel(-150, 1000, 500);
+    driveAccel(-150, 1000, 500);    // drive back
+    
+    // PHASE II :P
+    strafeFor(side * 200, 400);     // align to wall
     intakeStop();
+    strafeAccel(side * -100, 700, 0);// move out from wall
+    sleep(200);
+    rot(-side * 190);               // turn -45deg
+    sleep(1000);
+    outtake();
+    driveAccel(150, 1000, 0);       // accelerate to 150rpm
+    driveDecel(150, 1000);       // decelerate to 150rpm
+    //trebuchet(); uncomment this if bot ends in correct posn
 }
 
-void ezBackAuton(int side = RIGHT) {
+//experimental
+void reeeeverdale(int side = RIGHT) {
+    // shoot preload, toggle bottom flag
+    isCatapultReady = true;
     intake();
-    driveRot(1160);
-    sleep(1500);
-    rot(side * 280);
-    sleep(1100);
+    if(side == RIGHT) driveAccel(200, 1000, 100); // nab 2nd ball (1.1s)
+    else if(side == LEFT) driveAccel(200, 1000, 0); // nab 2nd ball
+    sleep(150);                     //---- ADD 100-150ms if ball is not intaken
+    if(side == RIGHT) driveAccel(-200, 1000, 100); // drive back to wall (2.35s)
+    else if(side == LEFT) driveAccel(-200, 1000, 0); // drive back to wall
+    sleep(100);                     //---- ADD 100ms if overturning
     intakeStop();
-    driveFor(150, 1000); //park
+    rot(side * 380);                // turn to wall
+    sleep(750);                     //---- ADD 50 ms IF TURN IS INCOMPLETE (3.2s)
+    strafeFor(side * 200, 400);     // align against wall
+    strafeAccel(side * -100, 700, 0);                   // come out from wall (4.3s)
+    if(side == RIGHT) driveAccel(100, 300, 700);        // fwd to double shot posn (5.3s)
+    else if(side == LEFT) driveAccel(100, 300, 550);    // fwd to double shot posn
+    rot(side * -30);                // turn slightly to aim
+    sleep(200); 
+    trebuchet();                    // launch ball, 500ms (6s)
+    if(side == RIGHT) rot(35);      // turn to toggle bottom flag
+    else if(side == LEFT) rot(-25); // turn to toggle bottom flag
+    trebuchet();                    // ready catapult, 500ms
+    sleep(100);
+    intake();
+    driveAccel(200, 1000, 100);     // forward to toggle flag (7.7s)
+    // later, add left/right strafe to collect balls
+    sleep(100);
+    driveAccel(-200, 1000, 100);    // drive back (8.9s)
+    
+    // PHASE II :P
+    strafeFor(side * 200, 400);     // align to wall (9.3s)
+    intakeStop();
+    strafeAccel(side * -100, 700, 0);// move out from wall (10s)
+    sleep(200);
+    rot(-side * 190);               // turn -45deg
+    sleep(375);                     //---- ADD 25 ms IF TURN IS INCOMPLETE (10.6s)
+    outtake();
+    driveAccel(150, 1000, 0);       // accelerate to 150rpm
+    driveDecel(150, 1000);       // decelerate to 150rpm (12.6s)
+    //trebuchet(); uncomment this if bot ends in correct posn (13.1s)
 }
 
-void BackCapPark(int side = RIGHT) {
-    intake();
-    driveRot(1160);
-    sleep(1500);
-    rot(side * 280);
-    sleep(1100);
+void backCapPark(int side = RIGHT){
+    intake(); // intake ball
+    driveAccel(150, 1000, 600);
+    sleep(100);
+    /*
+    rot(side * 380);
+    sleep(1000);
+    strafeAccel(side * -80, 200, 350); //strafe in front of cap
+    sleep(100);
+    driveAccel(-160, 1000, 0); //drive back into cap
     intakeStop();
-    driveFor(150, 1000); //
+    Flipper.spin(vex::directionType::fwd, -100, vex::velocityUnits::pct);
+    sleep(300);
+    Flipper.stop();
+    flipRot = -360;
+    trebuchet();
+    strafeAccel(side * 80, 400, 600);*/
+    
+    //go straight to park
+    driveAccel(-80, 200, 160);
+    rot(side * 380);
+    sleep(1000);
+    intake(); //start climber wheels
+    driveFor(200, 900); //climb tile
+    sleep(500);
+    intakeStop();
 }
 
 /*---------------------------------------------------------------------------*/
@@ -543,8 +572,6 @@ void pre_auton( void ) {
     isBraking = false;
     amIBlue = true;
     areLEDsOn = false;
-    
-    Gyro.startCalibration();
 }
 
 /*---------------------------------------------------------------------------*/
@@ -559,11 +586,15 @@ void pre_auton( void ) {
 
 void autonomous( void ) {
     Brain.Screen.print("Robot is in Autonomous mode");
-    //oleReliable(RIGHT); //front auton
-    //newHopefullyReliable(LEFT); //front auton
-    //backCapPark(LEFT);   //back auton
-    ezBackAuton(LEFT);
-    //test();
+    
+    oleReliable(RIGHT); //BF
+    //backCapPark(RIGHT); //BB
+    //oleReliable(LEFT);  //RF
+    //backCapPark(LEFT);  //RB
+    
+    //EXPERIMENTAL, KEEP COMMENTED!!!
+    //reeeeverdale(RIGHT);  //BF
+    //reeeeverdale(LEFT);   //RF
 }
 
 /*---------------------------------------------------------------------------*/
@@ -575,60 +606,24 @@ void autonomous( void ) {
 /*                                                                           */
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
-float leftside;
-float rightside;
 
 void usercontrol( void ) {
   // User control code here, inside the loop
-    
-  Gyro.startCalibration();
-  while(Gyro.isCalibrating()){
-	  sleep(20);
-  }
-  sleep(1000);
-    while (1) {
+  while (1) {
     // This is the main execution loop for the user control program.
     // Each time through the loop your program should update motor + servo 
     // values based on feedback from the joysticks.
       
       //Controller.ButtonL2.pressed(toggleBrake);
-      
-      
-      //TANK DRIVE
-      //leftside = isBallMode * Controller.Axis3.value()*1.6;
-      //rightside = isBallMode * Controller.Axis2.value()*1.6;
-      
-      
-      //ARCADE DRIVE
+
       FB = Controller.Axis3.value();
-      //LR = Controller.Axis4.value();
+      LR = Controller.Axis4.value();
       T = (int)(Controller.Axis1.value());
       
-      //linear
-      //leftside = isBallMode * (FB + T) * 1.6; //scale to 200rpm
-      //rightside = isBallMode * (FB - T) * 1.6;
-      
-      //quadratic
-      //leftside = copysign((isBallMode * 0.012 * pow((FB+T),2)), FB+T); 
-      //rightside = copysign((isBallMode * 0.012 * pow((FB-T),2)), FB-T);
-      
-      //conditional
-      leftside = isBallMode * (1.6 * FB + 0.012 * pow(T,2));
-      rightside = isBallMode * (1.6 * FB - 0.012 * pow(T,2));
-      
-      B_B_L.spin(vex::directionType::fwd,leftside,vex::velocityUnits::rpm);
-      B_B_R.spin(vex::directionType::rev,rightside,vex::velocityUnits::rpm);
-      B_M_L.spin(vex::directionType::fwd,leftside,vex::velocityUnits::rpm);
-      B_M_R.spin(vex::directionType::rev,rightside,vex::velocityUnits::rpm);
-      B_C_R.spin(vex::directionType::fwd,leftside,vex::velocityUnits::rpm);
-      B_C_L.spin(vex::directionType::rev,rightside,vex::velocityUnits::rpm);
-/*
-      B_B_L.spin(vex::directionType::fwd,isBallMode*2*(FB + isBallMode*T + LR),vex::velocityUnits::rpm);
-      B_B_R.spin(vex::directionType::rev,isBallMode*2*(FB - isBallMode*T - LR),vex::velocityUnits::rpm);
-      B_M_R.spin(vex::directionType::rev,isBallMode*2*(FB - isBallMode*T - LR),vex::velocityUnits::rpm);
-      B_M_L.spin(vex::directionType::fwd,isBallMode*2*(FB + isBallMode*T + LR),vex::velocityUnits::rpm);
-      B_C_R.spin(vex::directionType::fwd,isBallMode*2*(FB + isBallMode*T - LR),vex::velocityUnits::rpm);
-      B_C_L.spin(vex::directionType::rev,isBallMode*2*(FB - isBallMode*T + LR),vex::velocityUnits::rpm);*/
+      /* FL_Base.spin(vex::directionType::fwd,isBallMode*2*(FB + isBallMode*T + LR),vex::velocityUnits::rpm);
+      FR_Base.spin(vex::directionType::rev,isBallMode*2*(FB - isBallMode*T - LR),vex::velocityUnits::rpm);
+      BL_Base.spin(vex::directionType::fwd,isBallMode*2*(FB + isBallMode*T - LR),vex::velocityUnits::rpm);
+      BR_Base.spin(vex::directionType::rev,isBallMode*2*(FB - isBallMode*T + LR),vex::velocityUnits::rpm); */
 
     vex::task::sleep(20); //Sleep the task for a short amount of time to prevent wasted resources. 
   }
