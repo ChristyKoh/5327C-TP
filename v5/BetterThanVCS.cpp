@@ -22,6 +22,7 @@ vex::competition    Competition;
 
 //mode
 bool isCatapultReady = false;
+bool isCollectorReady = false;
 bool isBraking = false;
 bool amIBlue = true;
 bool areLEDsOn = false;
@@ -94,15 +95,15 @@ void delayLEDsOff() {
 }
 
 void intake() {
-    Intake.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
-    Intake2.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
-    Brain.Screen.printAt(10,40,"Intake running at 200rpm");
+    Intake.spin(vex::directionType::fwd, 600, vex::velocityUnits::rpm);
+    Intake2.spin(vex::directionType::rev, 600, vex::velocityUnits::rpm);
+    Brain.Screen.printAt(10,40,"Intake running at 600rpm");
 }
 
 void outtake() {
-    Intake.spin(vex::directionType::rev, 200, vex::velocityUnits::rpm);
-    Intake2.spin(vex::directionType::rev, 200, vex::velocityUnits::rpm);
-    Brain.Screen.printAt(10,40,"Intake running at 200rpm");
+    Intake.spin(vex::directionType::rev, 600, vex::velocityUnits::rpm);
+    Intake2.spin(vex::directionType::fwd, 600, vex::velocityUnits::rpm);
+    Brain.Screen.printAt(10,40,"Intake running at 600rpm");
 }
 
 void intakeStop() {
@@ -319,12 +320,32 @@ void trebuchet() {
         //catapult up, start moving arm
         Catapult.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
         Brain.Screen.printAt(10,40, "Catapult Running");
-        while(Bumper.value() == 1){
+        while(CatBumper.value() == 1){
             sleep(20);
         }
         Catapult.stop();
         isCatapultReady = true;
     }
+}
+
+void smack() {
+   if(Catapult.isSpinning()){
+	   // catapult is in motion, do not activate
+       return;
+   } else if(isColReady) {
+	   Catapult.spin(vex::directionType::rev, 200,vex::velocityUnits::rpm);
+		sleep(250);
+		Catapult.stop();
+		isCollectorReady = false;
+   } else {
+      Catapult.spin(vex::directionType::rev, 200, vex::velocityUnits::rpm);
+      while(ColBumper.value() == 1) {
+		  sleep(20);
+	  }
+	  Catapult.stop();
+	  isCollectorReady = true;
+   }
+   
 }
 
 void trebStop() {
@@ -338,6 +359,7 @@ void trebStop() {
 int launchCallback() {
     for(;;) {
         Controller.ButtonR1.pressed(trebuchet);
+        Controller.ButtonL1.pressed(smack);
         //Brain.Screen.printAt(10,150,"Launch Callback Running...");
         vex::task::sleep(100);
     }
@@ -397,6 +419,7 @@ int mainCallback() {
       Controller.ButtonR2.pressed(intake);
       Controller.ButtonL2.pressed(outtake);
       Controller.ButtonR2.released(intakeStop);
+      Controller.ButtonL2.released(intakeStop);
       Controller.ButtonB.released(intakeStop);
       Controller.ButtonA.pressed(catgo);
       Controller.ButtonA.released(catstop);
@@ -405,7 +428,7 @@ int mainCallback() {
       Controller.ButtonY.released(flipStop);
       Controller.ButtonX.pressed(flipDown);
       Controller.ButtonX.released(flipStop);
-      Controller.ButtonL1.pressed(flipOne);
+      //Controller.ButtonL1.pressed(flipOne);
     }
 }
 
