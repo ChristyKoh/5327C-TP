@@ -112,6 +112,20 @@ void intakeStop() {
     Brain.Screen.printAt(10,40,"Intake stopped.");
 }
 
+void liftUp() {
+	Intake.spin(vex::directionType::fwd, 600, vex::velocityUnits::rpm);
+    Intake2.spin(vex::directionType::rev, 600, vex::velocityUnits::rpm);
+}
+
+void liftDown() {
+	Intake.spin(vex::directionType::rev, 600, vex::velocityUnits::rpm);
+    Intake2.spin(vex::directionType::fwd, 600, vex::velocityUnits::rpm);
+}
+
+void liftStop() {
+	intakeStop();
+}
+
 void catgo() {
     Catapult.spin(vex::directionType::fwd,200,vex::velocityUnits::rpm);
 }
@@ -314,6 +328,9 @@ void trebuchet() {
         Catapult.spin(vex::directionType::fwd, 200,vex::velocityUnits::rpm);
         Brain.Screen.printAt(10,40, "Catapult Firing");
         sleep(500);
+		/*while(CatBumper.value() == 0){
+			sleep(1);
+		}*/
         Catapult.stop();
         isCatapultReady = false;
     } else {
@@ -332,9 +349,9 @@ void smack() {
    if(Catapult.isSpinning()){
 	   // catapult is in motion, do not activate
        return;
-   } else if(isColReady) {
+   } else if(isCollectorReady) {
 	   Catapult.spin(vex::directionType::rev, 200,vex::velocityUnits::rpm);
-		sleep(250);
+		sleep(500);
 		Catapult.stop();
 		isCollectorReady = false;
    } else {
@@ -342,7 +359,7 @@ void smack() {
       while(ColBumper.value() == 1) {
 		  sleep(20);
 	  }
-	  Catapult.stop();
+	  Catapult.stop(vex::brakeType::hold);
 	  isCollectorReady = true;
    }
    
