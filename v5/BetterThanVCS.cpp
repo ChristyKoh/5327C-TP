@@ -35,9 +35,7 @@ int motOriginal2;
 
 //base
 int thresh = 10;
-int FB;
-int LR;
-int T;
+int FB,LR, T, Lift;
 double brakePosition[4] = {0.0, 0.0, 0.0, 0.0}; //BL, BR, CR, CL
 
 double BLpos, BRpos, CRpos, CLpos;
@@ -75,7 +73,7 @@ void toggleLEDs() {
 }
 
 void toggleMode() {
-    if(Brain.timer(vex::timeUnits::msec) > 300){
+    if(Brain.timer(vex::timeUnits::msec) > 350){
         isBallMode = -isBallMode;
         if(isBallMode == 1) {
             Brain.Screen.printAt(10,40,"Mode: Ball Mode %b", isBallMode);
@@ -135,13 +133,12 @@ void catstop() {
 }
 
 void flipUp() {
-    Flipper.spin(vex::directionType::fwd, 80, vex::velocityUnits::rpm);
+    Flipper.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
     Brain.Screen.printAt(10,40,"Flipper running at 200rpm");
-    //if(Flipper.rotation(vex::rotationUnits::deg) < 5) Flipper.startRotateTo(0,vex::rotationUnits::deg);
 }
 
 void flipDown() {
-    Flipper.spin(vex::directionType::rev, 80, vex::velocityUnits::rpm);
+    Flipper.spin(vex::directionType::rev, 200, vex::velocityUnits::rpm);
     Brain.Screen.printAt(10,40,"Flipper running at 200rpm");
 }
 
@@ -151,9 +148,7 @@ void flipStop() {
 }
 
 void flipOne() {
-    flipRot-=180;
-    Brain.Screen.printAt(10,80,"FlipRot is ", flipRot);
-    Flipper.startRotateTo(flipRot, vex::rotationUnits::deg, 75, vex::velocityUnits::pct);
+    
 }
 
 void drive(int vel) { // + fwd - rev
@@ -322,15 +317,22 @@ void align() {
 }
 
 void trebuchet() {
-    if(isCatapultReady) {
+	//auto reload
+	Catapult.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
+	Brain.Screen.printAt(10,40, "Catapult Running");
+	sleep(500);
+	while(CatBumper.value() == 1){
+		sleep(20);
+	}
+	Catapult.stop();
+	
+    /* UNCOMMENT for regular catapult function
+	if(isCatapultReady) {
         //catapult down, fire
        // Catapult.RotateFor(1,vex::rotationUnits::rev,200,vex::velocityUnits::rpm);
         Catapult.spin(vex::directionType::fwd, 200,vex::velocityUnits::rpm);
         Brain.Screen.printAt(10,40, "Catapult Firing");
         sleep(500);
-		/*while(CatBumper.value() == 0){
-			sleep(1);
-		}*/
         Catapult.stop();
         isCatapultReady = false;
     } else {
@@ -342,7 +344,8 @@ void trebuchet() {
         }
         Catapult.stop();
         isCatapultReady = true;
-    }
+    }*/
+	
 }
 
 void smack() {
@@ -375,7 +378,7 @@ void trebStop() {
 
 int launchCallback() {
     for(;;) {
-        Controller.ButtonR1.pressed(trebuchet);
+        if(isBallMode) Controller.ButtonR1.pressed(trebuchet);
         Controller.ButtonL1.pressed(smack);
         //Brain.Screen.printAt(10,150,"Launch Callback Running...");
         vex::task::sleep(100);
@@ -433,19 +436,29 @@ int mainCallback() {
       Controller.ButtonRight.pressed(toggleMode);
       Controller.ButtonRight.released(delayLEDsOff);
 
-      Controller.ButtonR2.pressed(intake);
-      Controller.ButtonL2.pressed(outtake);
-      Controller.ButtonR2.released(intakeStop);
-      Controller.ButtonL2.released(intakeStop);
-      Controller.ButtonB.released(intakeStop);
-      Controller.ButtonA.pressed(catgo);
-      Controller.ButtonA.released(catstop);
+      Controller.ButtonUp.pressed(flipUp);
+      Controller.ButtonUp.released(flipStop);
+	  Controller.ButtonDown.pressed(flipDown);
+      Controller.ButtonDown.released(flipStop);
+	  Controller.ButtonB.pressed(flipOne);
+	  
+	  Controller.ButtonA.pressed(catgo);
+	  Controller.ButtonA.released(catstop);
       
-      Controller.ButtonY.pressed(flipUp);
-      Controller.ButtonY.released(flipStop);
-      Controller.ButtonX.pressed(flipDown);
-      Controller.ButtonX.released(flipStop);
-      //Controller.ButtonL1.pressed(flipOne);
+	  if (isBallMode) {
+		Controller.ButtonR2.pressed(intake);
+		Controller.ButtonR2.released(intakeStop);
+		Controller.ButtonL2.pressed(outtake);
+		Controller.ButtonL2.released(intakeStop);
+	  } else {
+		Controller.ButtonR2.pressed(liftDown);
+		Controller.ButtonR2.released(liftStop);
+		Controller.ButtonR1.pressed(liftUp);
+		Controller.ButtonR1.released(liftStop);
+		Controller.ButtonL2.pressed(flipOne);
+	  }
+	  
+      
     }
 }
 
@@ -659,6 +672,12 @@ void usercontrol( void ) {
       FB = Controller.Axis3.value();
       LR = Controller.Axis4.value();
       T = (int)(Controller.Axis1.value());
+	  Lift = Controller.Axis2.position(vex::percentUnits::pct);
+	  
+	  if (abs(Lift)> 80) {
+		Intake.spin(vex::directionType::fwd, Lift, vex::percentUnits::pct);
+		Intake2.spin(vex::directionType::rev, Lift, vex::percentUnits::pct);
+	  }
       
       /* FL_Base.spin(vex::directionType::fwd,isBallMode*2*(FB + isBallMode*T + LR),vex::velocityUnits::rpm);
       FR_Base.spin(vex::directionType::rev,isBallMode*2*(FB - isBallMode*T - LR),vex::velocityUnits::rpm);
