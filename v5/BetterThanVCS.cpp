@@ -22,6 +22,8 @@
 
 	//mode
 	bool isCatapultReady = false;
+    bool isCatapultPriming = false;
+    bool isCollectorPriming = false;
 	bool isCollectorReady = false;
 	bool isBraking = false;
 	bool amIBlue = true;
@@ -53,20 +55,20 @@
 			areLEDsOn = !areLEDsOn;
 			if(areLEDsOn){
 				LED.state(100,vex::percentUnits::pct);
-				LEDa.state(100,vex::percentUnits::pct);
-				LEDb.state(100,vex::percentUnits::pct);
-				LEDc.state(100,vex::percentUnits::pct);
-				LEDd.state(100,vex::percentUnits::pct);
-				LEDe.state(100,vex::percentUnits::pct);
-				LEDf.state(100,vex::percentUnits::pct);
+				//LEDa.state(100,vex::percentUnits::pct);
+				//LEDb.state(100,vex::percentUnits::pct);
+				//LEDc.state(100,vex::percentUnits::pct);
+				//LEDd.state(100,vex::percentUnits::pct);
+				//LEDe.state(100,vex::percentUnits::pct);
+				//LEDf.state(100,vex::percentUnits::pct);
 			} else {
 				LED.state(0,vex::percentUnits::pct);
-				LEDa.state(0,vex::percentUnits::pct);
-				LEDb.state(0,vex::percentUnits::pct);
-				LEDc.state(0,vex::percentUnits::pct);
-				LEDd.state(0,vex::percentUnits::pct);
-				LEDe.state(0,vex::percentUnits::pct);
-				LEDf.state(0,vex::percentUnits::pct);
+				//LEDa.state(0,vex::percentUnits::pct);
+				//LEDb.state(0,vex::percentUnits::pct);
+			    //LEDc.state(0,vex::percentUnits::pct);
+				//LEDd.state(0,vex::percentUnits::pct);
+				//LEDe.state(0,vex::percentUnits::pct);
+				//LEDf.state(0,vex::percentUnits::pct);
 			}
 			Brain.resetTimer();
 		}
@@ -129,7 +131,7 @@
 	}
 
 	void catstop() {
-		Catapult.stop();
+		Catapult.stop(vex::brakeType::coast);
 	}
 
 	void flipUp() {
@@ -184,6 +186,10 @@
 			BL_Base.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
 			BR_Base.startRotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
 		}
+	}
+	
+	void driveMotor(int *motor) {
+		
 	}
 
 	void strafe(int vel) { //+ right - left
@@ -291,19 +297,19 @@
 		BR_Base.stop();
 	}
 
-	void rotFor(int vel, int time){
+	void rotTime(int vel, int time){
 		rotFast(vel);
 		sleep(time);
 		stopBase();
 	}
 
-	void driveFor(int vel, int time) {
+	void driveTime(int vel, int time) {
 		drive(vel);
 		sleep(time);
 		stopBase();
 	}
 
-	void strafeFor(int vel, int time) {
+	void strafeTime(int vel, int time) {
 		strafe(vel);
 		sleep(time);
 		stopBase();
@@ -317,7 +323,9 @@
 	}
 
 	void trebuchet() {
+        if (isCollectorPriming) return;
 		//auto reload
+        isCatapultPriming = true;
 		Catapult.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
 		Brain.Screen.printAt(10,40, "Catapult Running");
 		sleep(500);
@@ -325,7 +333,7 @@
 			sleep(20);
 		}
 		Catapult.stop();
-		
+		isCatapultPriming = false;
 		/* UNCOMMENT for regular catapult function
 		if(isCatapultReady) {
 			//catapult down, fire
@@ -348,24 +356,46 @@
 		
 	}
 
-	void smack() {
-	   if(Catapult.isSpinning()){
-		   // catapult is in motion, do not activate
-		   return;
-	   } else if(isCollectorReady) {
-		   Catapult.spin(vex::directionType::rev, 200,vex::velocityUnits::rpm);
-			sleep(300);
-			Catapult.stop();
-			isCollectorReady = false;
-	   } else {
-		  Catapult.spin(vex::directionType::rev, 200, vex::velocityUnits::rpm);
-		  while(ColBumper.value() == 1) {
-			  sleep(20);
+    int smackTillButton() {
+        while(ColBumper.value() == 1) {
+              if (Catapult.torque(vex::torqueUnits::Nm) >= 1.0) {
+                  Catapult.stop(vex::brakeType::coast);
+                  isCollectorReady = false;
+                  return -1;
+              }
+			  sleep(2);
 		  }
-		  Catapult.stop(vex::brakeType::hold);
-		  isCollectorReady = true;
+        return 1;
+    }
+
+	void smack() {
+	   if(isCatapultPriming){
+		   // catapult is in motion, do not activate
+           Brain.Screen.clearScreen();
+           Brain.Screen.printAt(0,80,"Smack pressed, Catapult is spinning");
+	   } else if(isCollectorReady) {
+           isCollectorPriming = true;
+           Brain.Screen.clearScreen();
+           Brain.Screen.printAt(0,80,"Smack pressed");
+		   Catapult.spin(vex::directionType::rev, 200,vex::velocityUnits::rpm);
+		   sleep(300);
+		   Catapult.stop(vex::brakeType::coast);
+           isCollectorReady = false;
+           isCollectorPriming = false;
+	   } else {
+          isCollectorPriming = true;
+          Brain.Screen.clearScreen();
+          Brain.Screen.printAt(0,80,"Smack pressed, winding down");
+		  Catapult.spin(vex::directionType::rev, 200, vex::velocityUnits::rpm);
+          if (smackTillButton() > 0){
+              Catapult.stop(vex::brakeType::hold);
+              isCollectorReady = true;
+          } else {
+              Catapult.stop(vex::brakeType::coast);
+              isCollectorReady = false;
+          }
+          isCollectorPriming = false;
 	   }
-	   
 	}
 
 	void trebStop() {
@@ -431,6 +461,7 @@
 
 	int mainCallback() {
 		for(;;){
+          
 		  Controller.ButtonUp.pressed(toggleLEDs);
 			
 		  Controller.ButtonRight.pressed(toggleMode);
@@ -457,8 +488,6 @@
 			Controller.ButtonR1.released(liftStop);
 			Controller.ButtonL2.pressed(flipOne);
 		  }
-		  
-		  
 		}
 	}
 
@@ -490,7 +519,6 @@
 
 	///////////////////////////////////////// AUTONS /////////////////////////////////////////////////////////////////
 
-
 	void park() {
 		// drives forward until parks
 		Gyro.startCalibration();
@@ -520,7 +548,7 @@
 		intakeStop();
 		rot(side * 380);                // turn to wall
 		sleep(1000);
-		strafeFor(side * 200, 400);     // align against wall
+		strafeTime(side * 200, 400);     // align against wall
 		strafeAccel(side * -100, 700, 0);                   // come out from wall
 		if(side == RIGHT) driveAccel(100, 300, 700);        // fwd to double shot posn
 		else if(side == LEFT) driveAccel(100, 300, 550);    // fwd to double shot posn
@@ -537,7 +565,7 @@
 		driveAccel(-150, 1000, 500);    // drive back
 		
 		// PHASE II :P
-		strafeFor(side * 200, 400);     // align to wall
+		strafeTime(side * 200, 400);     // align to wall
 		intakeStop();
 		strafeAccel(side * -100, 700, 0);// move out from wall
 		sleep(200);
@@ -557,7 +585,7 @@
 		sleep(1100);
 		intakeStop();
 		park(); //uses gyro
-		//driveFor(150, 1000); //park
+		//driveTime(150, 1000); //park
 	}
 
 	//experimental
@@ -574,7 +602,7 @@
 		intakeStop();
 		rot(side * 380);                // turn to wall
 		sleep(750);                     //---- ADD 50 ms IF TURN IS INCOMPLETE (3.2s)
-		strafeFor(side * 200, 400);     // align against wall
+		strafeTime(side * 200, 400);     // align against wall
 		strafeAccel(side * -100, 700, 0);                   // come out from wall (4.3s)
 		if(side == RIGHT) driveAccel(100, 300, 700);        // fwd to double shot posn (5.3s)
 		else if(side == LEFT) driveAccel(100, 300, 550);    // fwd to double shot posn
@@ -592,7 +620,7 @@
 		driveAccel(-200, 1000, 100);    // drive back (8.9s)
 		
 		// PHASE II :P
-		strafeFor(side * 200, 400);     // align to wall (9.3s)
+		strafeTime(side * 200, 400);     // align to wall (9.3s)
 		intakeStop();
 		strafeAccel(side * -100, 700, 0);// move out from wall (10s)
 		sleep(200);
@@ -627,10 +655,14 @@
 		rot(side * 380);
 		sleep(1000);
 		intake(); //start climber wheels
-		driveFor(200, 900); //climb tile
+		driveTime(200, 900); //climb tile
 		sleep(500);
 		intakeStop();
 	}
+
+    void testing() {
+        drive();
+    }
 
 	/*---------------------------------------------------------------------------*/
 	/*                          Pre-Autonomous Functions                         */
@@ -665,7 +697,9 @@
 	void autonomous( void ) {
 		Brain.Screen.print("Robot is in Autonomous mode");
 		
-		oleReliable(RIGHT); //BF
+        testing();
+        
+		//oleReliable(RIGHT); //BF
 		//backCapPark(RIGHT); //BB
 		//oleReliable(LEFT);  //RF
 		//backCapPark(LEFT);  //RB
@@ -687,6 +721,7 @@
 
 	void usercontrol( void ) {
 	  // User control code here, inside the loop
+        
 	  while (1) {
 		// This is the main execution loop for the user control program.
 		// Each time through the loop your program should update motor + servo 
@@ -696,13 +731,20 @@
 
 		  FB = Controller.Axis3.value();
 		  LR = Controller.Axis4.value();
-		  T = (int)(Controller.Axis1.value());
+		  
 		  Lift = Controller.Axis2.position(vex::percentUnits::pct);
 		  
 		  if (abs(Lift)> 80) {
-			Intake.spin(vex::directionType::fwd, Lift, vex::percentUnits::pct);
-			Intake2.spin(vex::directionType::rev, Lift, vex::percentUnits::pct);
-		  }
+              T = 0;
+              Intake.spin(vex::directionType::fwd, Lift, vex::percentUnits::pct);
+              Intake2.spin(vex::directionType::fwd, Lift, vex::percentUnits::pct);
+		  } else {
+              T = Controller.Axis1.value();
+              if (!(Controller.ButtonR2.pressing() || Controller.ButtonL2.pressing())) {
+                  Intake.stop();
+                  Intake2.stop();
+              }
+          }
 		  
 		  /* FL_Base.spin(vex::directionType::fwd,isBallMode*2*(FB + isBallMode*T + LR),vex::velocityUnits::rpm);
 		  FR_Base.spin(vex::directionType::rev,isBallMode*2*(FB - isBallMode*T - LR),vex::velocityUnits::rpm);
