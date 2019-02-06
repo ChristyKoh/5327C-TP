@@ -6,7 +6,7 @@
 	#define FRONT 1
 	#define BACK -1
 
-	//namespace vex;
+	using namespace vex;
 
 	/*---------------------------------------------------------------------------*/
 	/*                                                                           */
@@ -15,7 +15,7 @@
 	/*---------------------------------------------------------------------------*/
 
 	//Creates a competition object that allows access to Competition methods.
-	vex::competition    Competition;
+	competition    Competition;
 
 
 	/////////////////////////////////////// VARIABLES /////////////////////////////////////////////////////////////
@@ -39,6 +39,7 @@
 	int thresh = 10;
 	int FB,LR, T, Lift;
 	double brakePosition[4] = {0.0, 0.0, 0.0, 0.0}; //BL, BR, CR, CL
+	double avgBaseRot;
 
 	double BLpos, BRpos, CRpos, CLpos;
 
@@ -47,62 +48,62 @@
 	/////////////////////////////////////// FUNCTIONS /////////////////////////////////////////////////////////////
 
 	void sleep(int t) {
-		vex::task::sleep(t);
+		task::sleep(t);
 	}
 
 	void toggleLEDs() {
-		if(Brain.timer(vex::timeUnits::msec) > 300){
+		if(Brain.timer(timeUnits::msec) > 300){
 			areLEDsOn = !areLEDsOn;
 			if(areLEDsOn){
-				LED.state(100,vex::percentUnits::pct);
-				//LEDa.state(100,vex::percentUnits::pct);
-				//LEDb.state(100,vex::percentUnits::pct);
-				//LEDc.state(100,vex::percentUnits::pct);
-				//LEDd.state(100,vex::percentUnits::pct);
-				//LEDe.state(100,vex::percentUnits::pct);
-				//LEDf.state(100,vex::percentUnits::pct);
+				LED.state(100,percentUnits::pct);
+				//LEDa.state(100,percentUnits::pct);
+				//LEDb.state(100,percentUnits::pct);
+				//LEDc.state(100,percentUnits::pct);
+				//LEDd.state(100,percentUnits::pct);
+				//LEDe.state(100,percentUnits::pct);
+				//LEDf.state(100,percentUnits::pct);
 			} else {
-				LED.state(0,vex::percentUnits::pct);
-				//LEDa.state(0,vex::percentUnits::pct);
-				//LEDb.state(0,vex::percentUnits::pct);
-			    //LEDc.state(0,vex::percentUnits::pct);
-				//LEDd.state(0,vex::percentUnits::pct);
-				//LEDe.state(0,vex::percentUnits::pct);
-				//LEDf.state(0,vex::percentUnits::pct);
+				LED.state(0,percentUnits::pct);
+				//LEDa.state(0,percentUnits::pct);
+				//LEDb.state(0,percentUnits::pct);
+			    //LEDc.state(0,percentUnits::pct);
+				//LEDd.state(0,percentUnits::pct);
+				//LEDe.state(0,percentUnits::pct);
+				//LEDf.state(0,percentUnits::pct);
 			}
 			Brain.resetTimer();
 		}
 	}
 
 	void toggleMode() {
-		if(Brain.timer(vex::timeUnits::msec) > 350){
+		if(Brain.timer(timeUnits::msec) > 350){
 			isBallMode = -isBallMode;
 			if(isBallMode == 1) {
 				Brain.Screen.printAt(10,40,"Mode: Ball Mode %b", isBallMode);
 			} else {
 				Brain.Screen.printAt(10,40,"Mode: Cap Mode %b", isBallMode);
 			}
-			LED.state(100,vex::percentUnits::pct);
+			LED.state(100,percentUnits::pct);
 			areLEDsOn = true;
 			Brain.resetTimer();
 		}
 	}
 
 	void delayLEDsOff() {
-		vex::task::sleep(500);
-		LED.state(0,vex::percentUnits::pct);
+		task::sleep(500);
+		LED.state(0,percentUnits::pct);
 		areLEDsOn = false;
 	}
 
 	void intake() {
-		Intake.spin(vex::directionType::fwd, 600, vex::velocityUnits::rpm);
-		Intake2.spin(vex::directionType::rev, 600, vex::velocityUnits::rpm);
+		Intake.spin(directionType::fwd, 600, velocityUnits::rpm);
+		Intake2.spin(directionType::rev, 600, velocityUnits::rpm);
 		Brain.Screen.printAt(10,40,"Intake running at 600rpm");
 	}
 
 	void outtake() {
-		Intake.spin(vex::directionType::rev, 600, vex::velocityUnits::rpm);
-		Intake2.spin(vex::directionType::fwd, 600, vex::velocityUnits::rpm);
+		Intake.spin(directionType::rev, 600, velocityUnits::rpm);
+		Intake2.spin(directionType::fwd, 600, velocityUnits::rpm);
 		Brain.Screen.printAt(10,40,"Intake running at 600rpm");
 	}
 
@@ -113,13 +114,13 @@
 	}
 
 	void liftUp() {
-		Intake.spin(vex::directionType::fwd, 600, vex::velocityUnits::rpm);
-		Intake2.spin(vex::directionType::rev, 600, vex::velocityUnits::rpm);
+		Intake.spin(directionType::fwd, 600, velocityUnits::rpm);
+		Intake2.spin(directionType::rev, 600, velocityUnits::rpm);
 	}
 
 	void liftDown() {
-		Intake.spin(vex::directionType::rev, 600, vex::velocityUnits::rpm);
-		Intake2.spin(vex::directionType::fwd, 600, vex::velocityUnits::rpm);
+		Intake.spin(directionType::rev, 600, velocityUnits::rpm);
+		Intake2.spin(directionType::fwd, 600, velocityUnits::rpm);
 	}
 
 	void liftStop() {
@@ -127,26 +128,26 @@
 	}
 
 	void catgo() {
-		Catapult.spin(vex::directionType::fwd,200,vex::velocityUnits::rpm);
+		Catapult.spin(directionType::fwd,200,velocityUnits::rpm);
 	}
 
 	void catstop() {
-		Catapult.stop(vex::brakeType::coast);
+		Catapult.stop(brakeType::coast);
 	}
 
 	void flipUp() {
-		Flipper.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
+		Flipper.spin(directionType::fwd, 200, velocityUnits::rpm);
 		Brain.Screen.printAt(10,40,"Flipper running at 200rpm");
 	}
 
 	void flipDown() {
-		Flipper.spin(vex::directionType::rev, 200, vex::velocityUnits::rpm);
+		Flipper.spin(directionType::rev, 200, velocityUnits::rpm);
 		Brain.Screen.printAt(10,40,"Flipper running at 200rpm");
 	}
 
 	void flipStop() {
 		Flipper.stop();
-		flipRot = Flipper.rotation(vex::rotationUnits::deg);
+		flipRot = Flipper.rotation(rotationUnits::deg);
 	}
 
 	void flipOne() {
@@ -154,62 +155,58 @@
 	}
 
 	void drive(int vel) { // + fwd - rev
-		FL_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-		FR_Base.spin(vex::directionType::rev,isBallMode*vel,vex::velocityUnits::rpm);
-		BL_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-		BR_Base.spin(vex::directionType::rev,isBallMode*vel,vex::velocityUnits::rpm);
+		FL_Base.spin(directionType::fwd,isBallMode*vel,velocityUnits::rpm);
+		FR_Base.spin(directionType::rev,isBallMode*vel,velocityUnits::rpm);
+		BL_Base.spin(directionType::fwd,isBallMode*vel,velocityUnits::rpm);
+		BR_Base.spin(directionType::rev,isBallMode*vel,velocityUnits::rpm);
 	}
 
 	void driveRot(int deg, bool waitForCompletion=false, int vel=200) {
 		if(waitForCompletion){
-			FL_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			FR_Base.rotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BL_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BR_Base.rotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+			FL_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			FR_Base.rotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BL_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BR_Base.rotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
 		} else {
-			FL_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			FR_Base.startRotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BL_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BR_Base.startRotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+			FL_Base.startRotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			FR_Base.startRotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BL_Base.startRotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BR_Base.startRotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
 		}
 	}
 
 	void driveTo(int deg, bool waitForCompletion=false, int vel=200) {
 		if(waitForCompletion){
-			FL_Base.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			FR_Base.rotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BL_Base.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BR_Base.rotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+			FL_Base.rotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			FR_Base.rotateTo(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BL_Base.rotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BR_Base.rotateTo(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
 		} else {
-			FL_Base.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			FR_Base.startRotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BL_Base.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BR_Base.startRotateTo(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+			FL_Base.startRotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			FR_Base.startRotateTo(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BL_Base.startRotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BR_Base.startRotateTo(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
 		}
-	}
-	
-	void driveMotor(int *motor) {
-		
 	}
 
 	void strafe(int vel) { //+ right - left
-		FL_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-		FR_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-		BL_Base.spin(vex::directionType::rev,isBallMode*vel,vex::velocityUnits::rpm);
-		BR_Base.spin(vex::directionType::rev,isBallMode*vel,vex::velocityUnits::rpm);
+		FL_Base.spin(directionType::fwd,isBallMode*vel,velocityUnits::rpm);
+		FR_Base.spin(directionType::fwd,isBallMode*vel,velocityUnits::rpm);
+		BL_Base.spin(directionType::rev,isBallMode*vel,velocityUnits::rpm);
+		BR_Base.spin(directionType::rev,isBallMode*vel,velocityUnits::rpm);
 	}
 
 	void strafeRot(int deg, bool waitForCompletion=false, int vel=200) {
 		if(waitForCompletion){
-			FL_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			FR_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BL_Base.rotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BR_Base.rotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+			FL_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			FR_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BL_Base.rotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BR_Base.rotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
 		} else {
-			FL_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			FR_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BL_Base.startRotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BR_Base.startRotateFor(-deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+			FL_Base.startRotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			FR_Base.startRotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BL_Base.startRotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BR_Base.startRotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
 		}
 	}
 
@@ -256,37 +253,37 @@
 	}
 
 	void rotFast(int vel) { //+ right - left
-		FL_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-		FR_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-		BL_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
-		BR_Base.spin(vex::directionType::fwd,isBallMode*vel,vex::velocityUnits::rpm);
+		FL_Base.spin(directionType::fwd,isBallMode*vel,velocityUnits::rpm);
+		FR_Base.spin(directionType::fwd,isBallMode*vel,velocityUnits::rpm);
+		BL_Base.spin(directionType::fwd,isBallMode*vel,velocityUnits::rpm);
+		BR_Base.spin(directionType::fwd,isBallMode*vel,velocityUnits::rpm);
 	}
 
 	void rot(int deg, bool waitForCompletion=false, int vel=200) { 
 		if(waitForCompletion){
-			FL_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			FR_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BL_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BR_Base.rotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+			FL_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			FR_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BL_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BR_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
 		} else {
-			FL_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			FR_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BL_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BR_Base.startRotateFor(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+			FL_Base.startRotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			FR_Base.startRotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BL_Base.startRotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BR_Base.startRotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
 		}
 	}
 
 	void rotTo(int deg, bool waitForCompletion=false, int vel=200) { 
 		if(waitForCompletion){
-			FL_Base.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			FR_Base.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BL_Base.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BR_Base.rotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+			FL_Base.rotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			FR_Base.rotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BL_Base.rotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BR_Base.rotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
 		} else {
-			FL_Base.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			FR_Base.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BL_Base.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
-			BR_Base.startRotateTo(deg,vex::rotationUnits::deg,vel,vex::velocityUnits::rpm);
+			FL_Base.startRotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			FR_Base.startRotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BL_Base.startRotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
+			BR_Base.startRotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
 		}
 	}
 
@@ -314,6 +311,28 @@
 		sleep(time);
 		stopBase();
 	}
+	
+	int derr, power, goal;
+	double kP;
+	
+	void driveFor(int dist, int time) {
+		//diameter 2.75 in, radius 1.375 in
+		//inches to degrees
+		// 2.75*pi= 360 deg
+		// d/2.75/pi*360
+		// thus multiplicator is 315.1268, round to 315
+		
+		kP = 0.05;
+		goal = dist * 315;
+		derr = goal - avgBaseRot;
+		
+		while(abs(derr) > 3) {
+			power = derr * kP;
+			drive(power);
+			derr = goal - avgBaseRot;
+		}
+		
+	}
 
 	void align() {
 		if(amIBlue) Vision.takeSnapshot(CAPBLUE);
@@ -322,11 +341,21 @@
 		}
 	}
 
+    int sensor() {
+		Brain.Screen.printAt(0,80, "sensor task running");
+		for(;;) {
+			avgBaseRot = (int)(FL_Base.rotation(rotationUnits::deg) + FR_Base.rotation(rotationUnits::deg) + FL_Base.rotation(rotationUnits::deg) + FL_Base.rotation(rotationUnits::deg))>>2;
+			Brain.Screen.printAt(0,100, "Average Base Rotation: %f", avgBaseRot);
+			sleep(20);
+		}
+		return 1;
+	}
+
 	void trebuchet() {
         if (isCollectorPriming) return;
 		//auto reload
         isCatapultPriming = true;
-		Catapult.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
+		Catapult.spin(directionType::fwd, 200, velocityUnits::rpm);
 		Brain.Screen.printAt(10,40, "Catapult Running");
 		sleep(500);
 		while(CatBumper.value() == 1){
@@ -337,15 +366,15 @@
 		/* UNCOMMENT for regular catapult function
 		if(isCatapultReady) {
 			//catapult down, fire
-		   // Catapult.RotateFor(1,vex::rotationUnits::rev,200,vex::velocityUnits::rpm);
-			Catapult.spin(vex::directionType::fwd, 200,vex::velocityUnits::rpm);
+		   // Catapult.RotateFor(1,rotationUnits::rev,200,velocityUnits::rpm);
+			Catapult.spin(directionType::fwd, 200,velocityUnits::rpm);
 			Brain.Screen.printAt(10,40, "Catapult Firing");
 			sleep(500);
 			Catapult.stop();
 			isCatapultReady = false;
 		} else {
 			//catapult up, start moving arm
-			Catapult.spin(vex::directionType::fwd, 200, vex::velocityUnits::rpm);
+			Catapult.spin(directionType::fwd, 200, velocityUnits::rpm);
 			Brain.Screen.printAt(10,40, "Catapult Running");
 			while(CatBumper.value() == 1){
 				sleep(20);
@@ -358,8 +387,8 @@
 
     int smackTillButton() {
         while(ColBumper.value() == 1) {
-              if (Catapult.torque(vex::torqueUnits::Nm) >= 1.0) {
-                  Catapult.stop(vex::brakeType::coast);
+              if (Catapult.torque(torqueUnits::Nm) >= 1.0) {
+                  Catapult.stop(brakeType::coast);
                   isCollectorReady = false;
                   return -1;
               }
@@ -377,21 +406,21 @@
            isCollectorPriming = true;
            Brain.Screen.clearScreen();
            Brain.Screen.printAt(0,80,"Smack pressed");
-		   Catapult.spin(vex::directionType::rev, 200,vex::velocityUnits::rpm);
+		   Catapult.spin(directionType::rev, 200,velocityUnits::rpm);
 		   sleep(300);
-		   Catapult.stop(vex::brakeType::coast);
+		   Catapult.stop(brakeType::coast);
            isCollectorReady = false;
            isCollectorPriming = false;
 	   } else {
           isCollectorPriming = true;
           Brain.Screen.clearScreen();
           Brain.Screen.printAt(0,80,"Smack pressed, winding down");
-		  Catapult.spin(vex::directionType::rev, 200, vex::velocityUnits::rpm);
+		  Catapult.spin(directionType::rev, 200, velocityUnits::rpm);
           if (smackTillButton() > 0){
-              Catapult.stop(vex::brakeType::hold);
+              Catapult.stop(brakeType::hold);
               isCollectorReady = true;
           } else {
-              Catapult.stop(vex::brakeType::coast);
+              Catapult.stop(brakeType::coast);
               isCollectorReady = false;
           }
           isCollectorPriming = false;
@@ -411,36 +440,36 @@
 			if(isBallMode) Controller.ButtonR1.pressed(trebuchet);
 			Controller.ButtonL1.pressed(smack);
 			//Brain.Screen.printAt(10,150,"Launch Callback Running...");
-			vex::task::sleep(100);
+			task::sleep(100);
 		}
 		return 1;
 	}
 
 	int FRCallback() {
 		for(;;) {
-			FR_Base.spin(vex::directionType::rev,isBallMode*1.6*(FB - isBallMode*T - LR),vex::velocityUnits::rpm);
-			vex::task::sleep(20);
+			FR_Base.spin(directionType::rev,isBallMode*1.6*(FB - isBallMode*T - LR),velocityUnits::rpm);
+			task::sleep(20);
 		}
 		return 1;
 	}
 	int FLCallback() {
 		for(;;) {
-			FL_Base.spin(vex::directionType::fwd,isBallMode*1.6*(FB + isBallMode*T + LR),vex::velocityUnits::rpm);
-			vex::task::sleep(20);
+			FL_Base.spin(directionType::fwd,isBallMode*1.6*(FB + isBallMode*T + LR),velocityUnits::rpm);
+			task::sleep(20);
 		}
 		return 1;
 	}
 	int BRCallback() {
 		for(;;) {
-			BR_Base.spin(vex::directionType::rev,isBallMode*1.6*(FB - isBallMode*T + LR),vex::velocityUnits::rpm);
-			vex::task::sleep(20);
+			BR_Base.spin(directionType::rev,isBallMode*1.6*(FB - isBallMode*T + LR),velocityUnits::rpm);
+			task::sleep(20);
 		}
 		return 1;
 	}
 	int BLCallback() {
 		for(;;) {
-			BL_Base.spin(vex::directionType::fwd,isBallMode*1.6*(FB + isBallMode*T - LR),vex::velocityUnits::rpm);
-			vex::task::sleep(20);
+			BL_Base.spin(directionType::fwd,isBallMode*1.6*(FB + isBallMode*T - LR),velocityUnits::rpm);
+			task::sleep(20);
 		}
 		return 1;
 	}
@@ -448,11 +477,11 @@
 	int brakeBase() {
 		for(;;){
 			if(isBraking){
-				FL_Base.startRotateTo(BLpos,vex::rotationUnits::deg, 200, vex::velocityUnits::rpm);
-				FR_Base.startRotateTo(BRpos,vex::rotationUnits::deg, 200, vex::velocityUnits::rpm);
-				BL_Base.startRotateTo(CRpos,vex::rotationUnits::deg, 200, vex::velocityUnits::rpm);
-				BR_Base.startRotateTo(CLpos,vex::rotationUnits::deg, 200, vex::velocityUnits::rpm);
-				Brain.Screen.printAt(10, 120, "BL: %.2f", FL_Base.rotation(vex::rotationUnits::deg));
+				FL_Base.startRotateTo(BLpos,rotationUnits::deg, 200, velocityUnits::rpm);
+				FR_Base.startRotateTo(BRpos,rotationUnits::deg, 200, velocityUnits::rpm);
+				BL_Base.startRotateTo(CRpos,rotationUnits::deg, 200, velocityUnits::rpm);
+				BR_Base.startRotateTo(CLpos,rotationUnits::deg, 200, velocityUnits::rpm);
+				Brain.Screen.printAt(10, 120, "BL: %.2f", FL_Base.rotation(rotationUnits::deg));
 			}
 			sleep(10);
 		}
@@ -488,27 +517,30 @@
 			Controller.ButtonR1.released(liftStop);
 			Controller.ButtonL2.pressed(flipOne);
 		  }
+		  
+		  
 		}
 	}
 
-	vex::task launchTask = vex::task(launchCallback);
-	vex::task mainTask = vex::task(mainCallback);
-	vex::task BLTask = vex::task(BLCallback);
-	vex::task BRTask = vex::task(BRCallback);
-	vex::task FRTask = vex::task(FRCallback);
-	vex::task FLTask = vex::task(FLCallback);
+	task launchTask = task(launchCallback);
+	task mainTask = task(mainCallback);
+    task sensorTask = task(sensor);
+    task BLTask = task(BLCallback);
+    task BRTask = task(BRCallback);
+    task FRTask = task(FRCallback);
+    task FLTask = task(FLCallback);
 
 	void toggleBrake() {
-		if(Brain.timer(vex::timeUnits::msec) > 300){
+		if(Brain.timer(timeUnits::msec) > 300){
 			isBraking = !isBraking;
 			if(isBraking) {
-				BLpos = FL_Base.rotation(vex::rotationUnits::deg);
-				BRpos = FR_Base.rotation(vex::rotationUnits::deg);
-				CRpos = BL_Base.rotation(vex::rotationUnits::deg);
-				CLpos = BR_Base.rotation(vex::rotationUnits::deg);
+				BLpos = FL_Base.rotation(rotationUnits::deg);
+				BRpos = FR_Base.rotation(rotationUnits::deg);
+				CRpos = BL_Base.rotation(rotationUnits::deg);
+				CLpos = BR_Base.rotation(rotationUnits::deg);
 				//baseTask.resume();
 				Brain.Screen.printAt(10,70,"Braking: %f", BLpos);
-				Brain.Screen.printAt(10,100,"rotation: %f", FL_Base.rotation(vex::rotationUnits::deg));
+				Brain.Screen.printAt(10,100,"rotation: %f", FL_Base.rotation(rotationUnits::deg));
 			} else {
 				//baseTask.suspend();
 				Brain.Screen.printAt(10,70,"Braking: %b", isBraking);
@@ -519,14 +551,16 @@
 
 	///////////////////////////////////////// AUTONS /////////////////////////////////////////////////////////////////
 
+	
+	
 	void park() {
 		// drives forward until parks
 		Gyro.startCalibration();
 		sleep(1500);
-		while(Gyro.value(vex::rotationUnits::deg) < 12) {
+		while(Gyro.value(rotationUnits::deg) < 12) {
 			drive(200);
 		}
-		while(Gyro.value(vex::rotationUnits::deg) > 2) {
+		while(Gyro.value(rotationUnits::deg) > 2) {
 			drive(150);
 		}
 		stopBase();
@@ -643,7 +677,7 @@
 		sleep(100);
 		driveAccel(-160, 1000, 0); //drive back into cap
 		intakeStop();
-		Flipper.spin(vex::directionType::fwd, -100, vex::velocityUnits::pct);
+		Flipper.spin(directionType::fwd, -100, velocityUnits::pct);
 		sleep(300);
 		Flipper.stop();
 		flipRot = -360;
@@ -660,8 +694,8 @@
 		intakeStop();
 	}
 
-    void testing() {
-        drive();
+    void testing(motor *m, int vel) {
+		m->spin(directionType::fwd, vel, velocityUnits::rpm);
     }
 
 	/*---------------------------------------------------------------------------*/
@@ -682,6 +716,8 @@
 		isBraking = false;
 		amIBlue = true;
 		areLEDsOn = false;
+        
+        
 	}
 
 	/*---------------------------------------------------------------------------*/
@@ -697,7 +733,14 @@
 	void autonomous( void ) {
 		Brain.Screen.print("Robot is in Autonomous mode");
 		
-        testing();
+        BLTask.suspend();
+        BRTask.suspend();
+        FLTask.suspend();
+        FRTask.suspend();
+        
+        //testing(&Catapult, 200);
+        //sleep(100);
+        //Catapult.stop();
         
 		//oleReliable(RIGHT); //BF
 		//backCapPark(RIGHT); //BB
@@ -721,6 +764,12 @@
 
 	void usercontrol( void ) {
 	  // User control code here, inside the loop
+	  
+      sensorTask.stop();
+        BLTask.resume();
+        BRTask.resume();
+        FLTask.resume();
+        FRTask.resume();
         
 	  while (1) {
 		// This is the main execution loop for the user control program.
@@ -732,12 +781,12 @@
 		  FB = Controller.Axis3.value();
 		  LR = Controller.Axis4.value();
 		  
-		  Lift = Controller.Axis2.position(vex::percentUnits::pct);
+		  Lift = Controller.Axis2.position(percentUnits::pct);
 		  
 		  if (abs(Lift)> 80) {
               T = 0;
-              Intake.spin(vex::directionType::fwd, Lift, vex::percentUnits::pct);
-              Intake2.spin(vex::directionType::fwd, Lift, vex::percentUnits::pct);
+              Intake.spin(directionType::fwd, Lift, percentUnits::pct);
+              Intake2.spin(directionType::fwd, Lift, percentUnits::pct);
 		  } else {
               T = Controller.Axis1.value();
               if (!(Controller.ButtonR2.pressing() || Controller.ButtonL2.pressing())) {
@@ -746,12 +795,12 @@
               }
           }
 		  
-		  /* FL_Base.spin(vex::directionType::fwd,isBallMode*2*(FB + isBallMode*T + LR),vex::velocityUnits::rpm);
-		  FR_Base.spin(vex::directionType::rev,isBallMode*2*(FB - isBallMode*T - LR),vex::velocityUnits::rpm);
-		  BL_Base.spin(vex::directionType::fwd,isBallMode*2*(FB + isBallMode*T - LR),vex::velocityUnits::rpm);
-		  BR_Base.spin(vex::directionType::rev,isBallMode*2*(FB - isBallMode*T + LR),vex::velocityUnits::rpm); */
+		  /* FL_Base.spin(directionType::fwd,isBallMode*2*(FB + isBallMode*T + LR),velocityUnits::rpm);
+		  FR_Base.spin(directionType::rev,isBallMode*2*(FB - isBallMode*T - LR),velocityUnits::rpm);
+		  BL_Base.spin(directionType::fwd,isBallMode*2*(FB + isBallMode*T - LR),velocityUnits::rpm);
+		  BR_Base.spin(directionType::rev,isBallMode*2*(FB - isBallMode*T + LR),velocityUnits::rpm); */
 
-		vex::task::sleep(20); //Sleep the task for a short amount of time to prevent wasted resources. 
+		task::sleep(20); //Sleep the task for a short amount of time to prevent wasted resources. 
 	  }
 	}
 
