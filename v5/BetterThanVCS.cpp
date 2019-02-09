@@ -37,9 +37,10 @@
 
 	//base
 	int thresh = 10;
-	int FB,LR, T, Lift;
+	int FB, LR, T, Lift;
+	int FL, FR, BL, BR;
 	double brakePosition[4] = {0.0, 0.0, 0.0, 0.0}; //BL, BR, CR, CL
-	double avgBaseRot;
+	int avgBaseFwd;
 
 	double BLpos, BRpos, CRpos, CLpos;
 
@@ -90,7 +91,7 @@
 	}
 
 	void delayLEDsOff() {
-		task::sleep(500);
+		sleep(500);
 		LED.state(0,percentUnits::pct);
 		areLEDsOn = false;
 	}
@@ -155,10 +156,16 @@
 	}
 
 	void drive(int vel) { // + fwd - rev
+		FL = vel;
+		FR = -vel;
+		BL = vel;
+		BR = -vel;
+		/*
 		FL_Base.spin(directionType::fwd,isBallMode*vel,velocityUnits::rpm);
 		FR_Base.spin(directionType::rev,isBallMode*vel,velocityUnits::rpm);
 		BL_Base.spin(directionType::fwd,isBallMode*vel,velocityUnits::rpm);
 		BR_Base.spin(directionType::rev,isBallMode*vel,velocityUnits::rpm);
+		*/
 	}
 
 	void driveRot(int deg, bool waitForCompletion=false, int vel=200) {
@@ -288,10 +295,15 @@
 	}
 
 	void stopBase() {
-		FL_Base.stop();
-		FR_Base.stop();
-		BL_Base.stop();
-		BR_Base.stop();
+		FR = 0;
+		FL = 0;
+		BR = 0;
+		BL = 0;
+		
+		FL_Base.stop(brakeType::hold);
+		FR_Base.stop(brakeType::hold);
+		BL_Base.stop(brakeType::hold);
+		BR_Base.stop(brakeType::hold);
 	}
 
 	void rotTime(int vel, int time){
@@ -315,23 +327,30 @@
 	int derr, power, goal;
 	double kP;
 	
-	void driveFor(int dist, int time) {
-		//diameter 2.75 in, radius 1.375 in
-		//inches to degrees
+	void driveFor(int dist, bool isStrafe=false) {
+		// diameter 2.75 in, radius 1.375 in
+		// inches to degrees
 		// 2.75*pi= 360 deg
 		// d/2.75/pi*360
-		// thus multiplicator is 315.1268, round to 315
+		// thus multiplier is 41.6697, round to 42
+		// because wheels are angled, multiply by sqrt(2)
+		// so multiplier is 58.9298, approx 59
 		
-		kP = 0.05;
-		goal = dist * 315;
-		derr = goal - avgBaseRot;
-		
+		kP = 0.7; //.555 want to slow down at 360deg
+		goal = dist * 35;
+		derr = goal - avgBaseFwd;
+		//Brain.Screen.printAt(0,120,"DriveFor initiated.");
 		while(abs(derr) > 3) {
+			Brain.Screen.printAt(0,140,"%d %d", power, FL);
 			power = derr * kP;
-			drive(power);
-			derr = goal - avgBaseRot;
+			power = power>200 ? 200 : power;
+			if(!isStrafe) drive(power);
+			else strafe(power);
+			derr = goal - avgBaseFwd;
+            sleep(5); //otherwise taking differnce is meaningless
 		}
-		
+		stopBase();
+        Brain.Screen.printAt(0,120,"Drive distance reached.");
 	}
 
 	void align() {
@@ -344,8 +363,9 @@
     int sensor() {
 		Brain.Screen.printAt(0,80, "sensor task running");
 		for(;;) {
-			avgBaseRot = (int)(FL_Base.rotation(rotationUnits::deg) + FR_Base.rotation(rotationUnits::deg) + FL_Base.rotation(rotationUnits::deg) + FL_Base.rotation(rotationUnits::deg))>>2;
-			Brain.Screen.printAt(0,100, "Average Base Rotation: %f", avgBaseRot);
+			avgBaseFwd = (int)(FL_Base.rotation(rotationUnits::deg) - FR_Base.rotation(rotationUnits::deg) + BL_Base.rotation(rotationUnits::deg) - BR_Base.rotation(rotationUnits::deg))>>2;
+			//Brain.Screen.clearScreen();   
+            Brain.Screen.printAt(0,100, "Average Base Rotation: %d", avgBaseFwd);
 			sleep(20);
 		}
 		return 1;
@@ -447,29 +467,33 @@
 
 	int FRCallback() {
 		for(;;) {
-			FR_Base.spin(directionType::rev,isBallMode*1.6*(FB - isBallMode*T - LR),velocityUnits::rpm);
-			task::sleep(20);
+			//FR_Base.spin(directionType::rev,isBallMode*1.6*(FB - isBallMode*T - LR),velocityUnits::rpm);
+			if (FR > 0) FR_Base.spin(directionType::fwd, FR, velocityUnits::rpm);
+			task::sleep(10);
 		}
 		return 1;
 	}
 	int FLCallback() {
 		for(;;) {
-			FL_Base.spin(directionType::fwd,isBallMode*1.6*(FB + isBallMode*T + LR),velocityUnits::rpm);
-			task::sleep(20);
+			//FL_Base.spin(directionType::fwd,isBallMode*1.6*(FB + isBallMode*T + LR),velocityUnits::rpm);
+			if (FL > 0) FL_Base.spin(directionType::fwd, FL, velocityUnits::rpm);
+			task::sleep(10);
 		}
 		return 1;
 	}
 	int BRCallback() {
 		for(;;) {
-			BR_Base.spin(directionType::rev,isBallMode*1.6*(FB - isBallMode*T + LR),velocityUnits::rpm);
-			task::sleep(20);
+			//BR_Base.spin(directionType::rev,isBallMode*1.6*(FB - isBallMode*T + LR),velocityUnits::rpm);
+			if (BR > 0) BR_Base.spin(directionType::fwd, BR, velocityUnits::rpm);
+			task::sleep(10);
 		}
 		return 1;
 	}
 	int BLCallback() {
 		for(;;) {
-			BL_Base.spin(directionType::fwd,isBallMode*1.6*(FB + isBallMode*T - LR),velocityUnits::rpm);
-			task::sleep(20);
+			//BL_Base.spin(directionType::fwd,isBallMode*1.6*(FB + isBallMode*T - LR),velocityUnits::rpm);
+			if (BL > 0) BL_Base.spin(directionType::fwd, BL, velocityUnits::rpm);
+			task::sleep(10);
 		}
 		return 1;
 	}
@@ -549,9 +573,7 @@
 		}
 	}
 
-	///////////////////////////////////////// AUTONS /////////////////////////////////////////////////////////////////
-
-	
+	///////////////////////////////////////// AUTONS /////////////////////////////////////////////////////////////////	
 	
 	void park() {
 		// drives forward until parks
@@ -733,10 +755,12 @@
 	void autonomous( void ) {
 		Brain.Screen.print("Robot is in Autonomous mode");
 		
-        BLTask.suspend();
+        /*BLTask.suspend();
         BRTask.suspend();
         FLTask.suspend();
-        FRTask.suspend();
+        FRTask.suspend();*/
+        
+        driveFor(24);
         
         //testing(&Catapult, 200);
         //sleep(100);
@@ -765,11 +789,11 @@
 	void usercontrol( void ) {
 	  // User control code here, inside the loop
 	  
-      sensorTask.stop();
-        BLTask.resume();
+      //sensorTask.stop();
+        /*BLTask.resume();
         BRTask.resume();
         FLTask.resume();
-        FRTask.resume();
+        FRTask.resume();*/
         
 	  while (1) {
 		// This is the main execution loop for the user control program.
@@ -778,8 +802,14 @@
 		  
 		  //Controller.ButtonL2.pressed(toggleBrake);
 
-		  FB = Controller.Axis3.value();
-		  LR = Controller.Axis4.value();
+		  FB = Controller.Axis3.position(percentUnits::pct);
+		  LR = Controller.Axis4.position(percentUnits::pct);
+		  
+		  FR = isBallMode*-2*(FB - isBallMode*T - LR);
+		  FL = isBallMode*2*(FB + isBallMode*T + LR);
+		  BR = isBallMode*-2*(FB - isBallMode*T + LR);
+		  BL = isBallMode*2*(FB + isBallMode*T - LR);
+		  
 		  
 		  Lift = Controller.Axis2.position(percentUnits::pct);
 		  
@@ -817,4 +847,4 @@
 		Competition.drivercontrol( usercontrol );
 
 		   
-	}
+	}	
