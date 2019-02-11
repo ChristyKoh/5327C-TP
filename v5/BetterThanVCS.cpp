@@ -16,6 +16,8 @@
 
 	//Creates a competition object that allows access to Competition methods.
 	competition    Competition;
+	
+	// pointers to member functions https://www.ibm.com/support/knowledgecenter/en/SSLTBW_2.3.0/com.ibm.zos.v2r3.cbclx01/cplr034.htm
 
 
 	/////////////////////////////////////// VARIABLES /////////////////////////////////////////////////////////////
@@ -40,11 +42,14 @@
 	int FB, LR, T, Lift;
 	int FL, FR, BL, BR;
 	double brakePosition[4] = {0.0, 0.0, 0.0, 0.0}; //BL, BR, CR, CL
-	int avgBaseFwd;
+	int avgBaseR, avgBaseL, avgBaseFwd, avgBaseRot;
 
 	double BLpos, BRpos, CRpos, CLpos;
 
 	int flipRot = 0;
+
+    //timers
+    double ledtime, modetime, basetime;
 
 	/////////////////////////////////////// FUNCTIONS /////////////////////////////////////////////////////////////
 
@@ -53,7 +58,7 @@
 	}
 
 	void toggleLEDs() {
-		if(Brain.timer(timeUnits::msec) > 300){
+		if((Brain.timer(timeUnits::msec)-ledtime) > 300){
 			areLEDsOn = !areLEDsOn;
 			if(areLEDsOn){
 				LED.state(100,percentUnits::pct);
@@ -72,12 +77,13 @@
 				//LEDe.state(0,percentUnits::pct);
 				//LEDf.state(0,percentUnits::pct);
 			}
-			Brain.resetTimer();
+			//Brain.resetTimer();
+            ledtime = Brain.timer(timeUnits::msec);
 		}
 	}
 
 	void toggleMode() {
-		if(Brain.timer(timeUnits::msec) > 350){
+		if((Brain.timer(timeUnits::msec)-modetime) > 350){
 			isBallMode = -isBallMode;
 			if(isBallMode == 1) {
 				Brain.Screen.printAt(10,40,"Mode: Ball Mode %b", isBallMode);
@@ -86,7 +92,8 @@
 			}
 			LED.state(100,percentUnits::pct);
 			areLEDsOn = true;
-			Brain.resetTimer();
+			modetime = Brain.timer(timeUnits::msec);
+            //Brain.resetTimer();
 		}
 	}
 
@@ -154,12 +161,24 @@
 	void flipOne() {
 		
 	}
+	
+	void resetBaseEnc() {
+		FL_Base.resetRotation();
+		FR_Base.resetRotation();
+		BL_Base.resetRotation();
+		BR_Base.resetRotation();
+	}
 
 	void drive(int vel) { // + fwd - rev
-		FL = vel;
+        BL = vel;
+        BR = -vel;
+        FR = -vel;
+        FL = vel;
+        
+		/*FL = vel;
 		FR = -vel;
 		BL = vel;
-		BR = -vel;
+		BR = -vel;*/
 		/*
 		FL_Base.spin(directionType::fwd,isBallMode*vel,velocityUnits::rpm);
 		FR_Base.spin(directionType::rev,isBallMode*vel,velocityUnits::rpm);
@@ -167,6 +186,20 @@
 		BR_Base.spin(directionType::rev,isBallMode*vel,velocityUnits::rpm);
 		*/
 	}
+
+    void driveLR(int L, int R) {
+        BL = L;
+        BR = -R;
+        FR = -R;
+        FL = L;
+    }
+
+    void driveAxes(int ladder, int snake) {
+        BL = ladder;
+        BR = -snake;
+        FR = -snake;
+        FL = ladder;
+    }
 
 	void driveRot(int deg, bool waitForCompletion=false, int vel=200) {
 		if(waitForCompletion){
@@ -266,7 +299,14 @@
 		BR_Base.spin(directionType::fwd,isBallMode*vel,velocityUnits::rpm);
 	}
 
-	void rot(int deg, bool waitForCompletion=false, int vel=200) { 
+    void rot(int vel) {
+		FL_Base.spin(directionType::fwd,vel,velocityUnits::rpm);
+		FR_Base.spin(directionType::fwd,vel,velocityUnits::rpm);
+		BL_Base.spin(directionType::rev,vel,velocityUnits::rpm);
+		BR_Base.spin(directionType::rev,vel,velocityUnits::rpm);
+	}
+
+	void rotRot(int deg, bool waitForCompletion=false, int vel=200) { 
 		if(waitForCompletion){
 			FL_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
 			FR_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
@@ -300,10 +340,10 @@
 		BR = 0;
 		BL = 0;
 		
-		FL_Base.stop(brakeType::hold);
-		FR_Base.stop(brakeType::hold);
-		BL_Base.stop(brakeType::hold);
-		BR_Base.stop(brakeType::hold);
+		FL_Base.stop();
+		FR_Base.stop();
+		BL_Base.stop();
+		BR_Base.stop();
 	}
 
 	void rotTime(int vel, int time){
@@ -324,7 +364,7 @@
 		stopBase();
 	}
 	
-	int derr, power, goal;
+	int derr, power, goal, aStep, initRot;
 	double kP;
 	
 	void driveFor(int dist, bool isStrafe=false) {
@@ -335,23 +375,70 @@
 		// thus multiplier is 41.6697, round to 42
 		// because wheels are angled, multiply by sqrt(2)
 		// so multiplier is 58.9298, approx 59
+		resetBaseEnc();
+		initRot = GyroYaw.value(rotationUnits::deg);
 		
-		kP = 0.7; //.555 want to slow down at 360deg
-		goal = dist * 35;
+		kP = 0.5; //.555 want to slow down at 360deg
+		goal = dist * 33;
 		derr = goal - avgBaseFwd;
 		//Brain.Screen.printAt(0,120,"DriveFor initiated.");
+        basetime = Brain.timer(timeUnits::msec);
+        
+        //accelerate to 200rpm in 100ms
+        aStep = copysign(1,dist)*5;
+        for(int c=0; c<40; c++) {
+            //drive(c*aStep);
+            //driveAxes(c*aStep, c*aStep+10);
+			driveLR(c*aStep, c*aStep+10);
+            task::sleep(6);
+        }
+        
+        //p to goal
 		while(abs(derr) > 3) {
 			Brain.Screen.printAt(0,140,"%d %d", power, FL);
 			power = derr * kP;
 			power = power>200 ? 200 : power;
-			if(!isStrafe) drive(power);
-			else strafe(power);
+            //if ((Brain.timer(timeUnits::msec)-basetime) < 16) driveAxes(0,power);
+            //else drive(power);
+			drive(power);
+			//driveAxes();
+            //if(!isStrafe) drive(power);
+			//else strafe(power);
 			derr = goal - avgBaseFwd;
             sleep(5); //otherwise taking differnce is meaningless
 		}
 		stopBase();
         Brain.Screen.printAt(0,120,"Drive distance reached.");
 	}
+    
+    
+    void rotFor(int deg) {
+        // radius of turning is approx 8 inches
+		// given degrees, convert to radians and * r
+		// multiplier = /180*pi*8 ~ 458
+		
+		resetBaseEnc();
+		
+		kP = 0.4;
+        goal = deg * 458;
+		derr = goal - avgBaseRot;
+		
+		while(abs(derr) > 3) {
+			//Brain.Screen.printAt(0,180,"%d %d", power, FL);
+			power = derr * kP;
+			power = power>200 ? 200 : power;
+            //if ((Brain.timer(timeUnits::msec)-basetime) < 16) driveAxes(0,power);
+            //else drive(power);
+			rot(power);
+            //if(!isStrafe) drive(power);
+			//else strafe(power);
+			derr = goal - avgBaseRot;
+            sleep(5); //otherwise taking differnce is meaningless
+		}
+		stopBase();
+        Brain.Screen.printAt(0,140,"Drive distance reached.");
+        
+    }
 
 	void align() {
 		if(amIBlue) Vision.takeSnapshot(CAPBLUE);
@@ -363,9 +450,15 @@
     int sensor() {
 		Brain.Screen.printAt(0,80, "sensor task running");
 		for(;;) {
-			avgBaseFwd = (int)(FL_Base.rotation(rotationUnits::deg) - FR_Base.rotation(rotationUnits::deg) + BL_Base.rotation(rotationUnits::deg) - BR_Base.rotation(rotationUnits::deg))>>2;
-			//Brain.Screen.clearScreen();   
-            Brain.Screen.printAt(0,100, "Average Base Rotation: %d", avgBaseFwd);
+			avgBaseL = FL_Base.rotation(rotationUnits::deg) + BL_Base.rotation(rotationUnits::deg);
+			avgBaseR = FR_Base.rotation(rotationUnits::deg) + BR_Base.rotation(rotationUnits::deg);
+			avgBaseFwd = (avgBaseL - avgBaseR)>>2;
+			avgBaseRot = (avgBaseL + avgBaseR)>>2;
+			
+			//Brain.Screen.clearScreen();
+			Brain.Screen.printAt(0,100, "Gyro: %.2f", GyroYaw.value(rotationUnits::deg));
+            //Brain.Screen.printAt(0,100, "Average Base Drive: %d", avgBaseFwd);
+			//Brain.Screen.printAt(0,120, "Average Base Rotation: %d", avgBaseRot);
 			sleep(20);
 		}
 		return 1;
@@ -468,46 +561,36 @@
 	int FRCallback() {
 		for(;;) {
 			//FR_Base.spin(directionType::rev,isBallMode*1.6*(FB - isBallMode*T - LR),velocityUnits::rpm);
-			if (FR > 0) FR_Base.spin(directionType::fwd, FR, velocityUnits::rpm);
-			task::sleep(10);
+			FR_Base.spin(directionType::fwd, FR, velocityUnits::rpm);
+            if (FR == 0) FR_Base.stop();
+			task::sleep(2);
 		}
 		return 1;
 	}
 	int FLCallback() {
 		for(;;) {
 			//FL_Base.spin(directionType::fwd,isBallMode*1.6*(FB + isBallMode*T + LR),velocityUnits::rpm);
-			if (FL > 0) FL_Base.spin(directionType::fwd, FL, velocityUnits::rpm);
-			task::sleep(10);
+			FL_Base.spin(directionType::fwd, FL, velocityUnits::rpm);
+            if (FL == 0) FL_Base.stop();
+			task::sleep(2);
 		}
 		return 1;
 	}
 	int BRCallback() {
 		for(;;) {
 			//BR_Base.spin(directionType::rev,isBallMode*1.6*(FB - isBallMode*T + LR),velocityUnits::rpm);
-			if (BR > 0) BR_Base.spin(directionType::fwd, BR, velocityUnits::rpm);
-			task::sleep(10);
+			BR_Base.spin(directionType::fwd, BR, velocityUnits::rpm);
+            if (BR == 0) BR_Base.stop();
+			task::sleep(2);
 		}
 		return 1;
 	}
 	int BLCallback() {
 		for(;;) {
 			//BL_Base.spin(directionType::fwd,isBallMode*1.6*(FB + isBallMode*T - LR),velocityUnits::rpm);
-			if (BL > 0) BL_Base.spin(directionType::fwd, BL, velocityUnits::rpm);
-			task::sleep(10);
-		}
-		return 1;
-	}
-
-	int brakeBase() {
-		for(;;){
-			if(isBraking){
-				FL_Base.startRotateTo(BLpos,rotationUnits::deg, 200, velocityUnits::rpm);
-				FR_Base.startRotateTo(BRpos,rotationUnits::deg, 200, velocityUnits::rpm);
-				BL_Base.startRotateTo(CRpos,rotationUnits::deg, 200, velocityUnits::rpm);
-				BR_Base.startRotateTo(CLpos,rotationUnits::deg, 200, velocityUnits::rpm);
-				Brain.Screen.printAt(10, 120, "BL: %.2f", FL_Base.rotation(rotationUnits::deg));
-			}
-			sleep(10);
+			BL_Base.spin(directionType::fwd, BL, velocityUnits::rpm);
+            if (BL == 0) BL_Base.stop();
+			task::sleep(2);
 		}
 		return 1;
 	}
@@ -541,8 +624,6 @@
 			Controller.ButtonR1.released(liftStop);
 			Controller.ButtonL2.pressed(flipOne);
 		  }
-		  
-		  
 		}
 	}
 
@@ -550,43 +631,33 @@
 	task mainTask = task(mainCallback);
     task sensorTask = task(sensor);
     task BLTask = task(BLCallback);
-    task BRTask = task(BRCallback);
     task FRTask = task(FRCallback);
+    task BRTask = task(BRCallback);
     task FLTask = task(FLCallback);
 
-	void toggleBrake() {
-		if(Brain.timer(timeUnits::msec) > 300){
-			isBraking = !isBraking;
-			if(isBraking) {
-				BLpos = FL_Base.rotation(rotationUnits::deg);
-				BRpos = FR_Base.rotation(rotationUnits::deg);
-				CRpos = BL_Base.rotation(rotationUnits::deg);
-				CLpos = BR_Base.rotation(rotationUnits::deg);
-				//baseTask.resume();
-				Brain.Screen.printAt(10,70,"Braking: %f", BLpos);
-				Brain.Screen.printAt(10,100,"rotation: %f", FL_Base.rotation(rotationUnits::deg));
-			} else {
-				//baseTask.suspend();
-				Brain.Screen.printAt(10,70,"Braking: %b", isBraking);
-			}
-			Brain.resetTimer();
-		}
-	}
-
 	///////////////////////////////////////// AUTONS /////////////////////////////////////////////////////////////////	
-	
+
 	void park() {
 		// drives forward until parks
-		Gyro.startCalibration();
+		GyroPitch.startCalibration();
 		sleep(1500);
-		while(Gyro.value(rotationUnits::deg) < 12) {
+		while(GyroPitch.value(rotationUnits::deg) < 12) {
 			drive(200);
 		}
-		while(Gyro.value(rotationUnits::deg) > 2) {
+		while(GyroPitch.value(rotationUnits::deg) > 2) {
 			drive(150);
 		}
 		stopBase();
 	}
+
+    void fetch() {
+        //nabs bol
+        intake();
+        driveFor(40);
+        sleep(500);
+        driveFor(-40);
+        intakeStop();
+    }
 
 	void oleReliable(int side = RIGHT) {
 		// shoot preload, toggle bottom flag
@@ -735,11 +806,10 @@
 	  // Example: clearing encoders, setting servo positions, ...
 		isBallMode = true;
 		isCatapultReady = false;
+        isCollectorReady = false;
 		isBraking = false;
 		amIBlue = true;
 		areLEDsOn = false;
-        
-        
 	}
 
 	/*---------------------------------------------------------------------------*/
@@ -754,13 +824,15 @@
 
 	void autonomous( void ) {
 		Brain.Screen.print("Robot is in Autonomous mode");
-		
-        /*BLTask.suspend();
-        BRTask.suspend();
-        FLTask.suspend();
-        FRTask.suspend();*/
+		BL_Base.setStopping(brakeType::hold);
+        BR_Base.setStopping(brakeType::hold);
+        FL_Base.setStopping(brakeType::hold);
+        FR_Base.setStopping(brakeType::hold);
         
-        driveFor(24);
+        //fetch();
+        rotFor(90);
+        sleep(400);
+        rotFor(-90);
         
         //testing(&Catapult, 200);
         //sleep(100);
@@ -789,11 +861,16 @@
 	void usercontrol( void ) {
 	  // User control code here, inside the loop
 	  
-      //sensorTask.stop();
+		//sensorTask.stop();
         /*BLTask.resume();
         BRTask.resume();
         FLTask.resume();
         FRTask.resume();*/
+        
+        BL_Base.setStopping(brakeType::coast);
+        BR_Base.setStopping(brakeType::coast);
+        FL_Base.setStopping(brakeType::coast);
+        FR_Base.setStopping(brakeType::coast);
         
 	  while (1) {
 		// This is the main execution loop for the user control program.
@@ -809,7 +886,6 @@
 		  FL = isBallMode*2*(FB + isBallMode*T + LR);
 		  BR = isBallMode*-2*(FB - isBallMode*T + LR);
 		  BL = isBallMode*2*(FB + isBallMode*T - LR);
-		  
 		  
 		  Lift = Controller.Axis2.position(percentUnits::pct);
 		  
