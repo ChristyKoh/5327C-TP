@@ -5,6 +5,8 @@
 	#define BLUE 1
 	#define FRONT 1
 	#define BACK -1
+    #define POS 1
+    #define NEG -1
 
 	using namespace vex;
 
@@ -182,8 +184,8 @@
 		//snek drives right lad drives left       
 		BL = lad;
         BR = -snek;
-        FR = -snek;
-        FL = lad;
+        FR = -lad;
+        FL = snek;
     }
 	
 	void strafe(int vel) { //+ right - left
@@ -406,7 +408,7 @@
 		stopBase();
 	}
 	
-	void diagFor(int dist, bool goRight, bool keepRot=true) {
+	void diagFor(int dist, int side, bool keepRot=false) {
 		//only drives one axis (Snek falling, Lad rising)
 		//Lad: BL, FR (/)		Snek: FL, BR (\)
 		//distance directly prop to rotations
@@ -418,33 +420,33 @@
 		resetBaseEnc();
 		initRot = GyroYaw.value(rotationUnits::deg);
 		
-		if (goRight) { //drive snek, right
+		if (side == POS) { //drive snek 
 			derr = goal - ((int)(FL_Base.rotation(rotationUnits::deg) - BR_Base.rotation(rotationUnits::deg))>>1);
 			
 			while(abs(derr) > 3) {
-			//Brain.Screen.printAt(0,140,"%d %d", power, FL);
+			//Brain.Screen.printAt(0,140,"snakes!");
 				power = derr * kP;
 				power = power>200 ? 200 : power;
 				if(keepRot) {
 					rotDiff = (GyroYaw.value(rotationUnits::deg)-initRot) * kPr;
 					//driveIndiv(int fl, int br, int fr, int bl)
-					driveIndiv(power - rotDiff, power + rotDiff,0,0);
+					driveIndiv(power - rotDiff, -power - rotDiff,0,0);
 				} else driveAxes(power, 0);
 				derr = goal - ((int)(FL_Base.rotation(rotationUnits::deg) - BR_Base.rotation(rotationUnits::deg))>>1);
 				sleep(5); //otherwise taking difference is meaningless
 			}
 			
-		} else { // drive lad, left
+		} else { //NEG, drive lad 
 			derr = goal - ((int)(BL_Base.rotation(rotationUnits::deg) - FR_Base.rotation(rotationUnits::deg))>>1);
 			
 			while(abs(derr) > 3) {
-				//Brain.Screen.printAt(0,140,"%d %d", power, FL);
+				//Brain.Screen.printAt(0,140,"ladders!");
 				power = derr * kP;
 				power = power>200 ? 200 : power;
 				if(keepRot) {
 					rotDiff = (GyroYaw.value(rotationUnits::deg)-initRot) * kPr;
 					//driveIndiv(int fl, int br, int fr, int bl)
-					driveIndiv(0,0,power - rotDiff, power + rotDiff);
+					driveIndiv(0,0, -power + rotDiff, power + rotDiff);
 				} else driveAxes(0, power);   
 				derr = goal - ((int)(BL_Base.rotation(rotationUnits::deg) - FR_Base.rotation(rotationUnits::deg))>>1);
 				sleep(5); //otherwise taking difference is meaningless
@@ -698,8 +700,20 @@
         sleep(500);
         trebuchet();
         intakeStop();
-        driveFor(-5);
-        strafe(side * 200);
+        rotFor(side * -28); //45 degrees
+        diagFor(side*12, side*NEG);
+        sleep(1000);
+        strafeFor(side*20);
+		
+        smack(); //collect 2 balls
+		intake();
+		drive(50);
+		sleep(500);
+		drive(0);
+		sleep(200);
+		drive(-100);
+		sleep(200);
+		
         sleep(500);
         stopBase();
     }
@@ -764,7 +778,9 @@
         
         //fetch();
         anticross(LEFT);
-        
+        //diagFor(LEFT*24, LEFT*NEG);
+        //diagFor(-24, POS);
+        //strafeFor(24);
         //park();
 		
         /*rotFor(45);
@@ -774,6 +790,11 @@
         //testing(&Catapult, 200);
         //sleep(100);
         //Catapult.stop();
+        sleep(500);
+        BL_Base.setStopping(brakeType::coast);
+        BR_Base.setStopping(brakeType::coast);
+        FL_Base.setStopping(brakeType::coast);
+        FR_Base.setStopping(brakeType::coast);
 	}
 
 	/*---------------------------------------------------------------------------*/
