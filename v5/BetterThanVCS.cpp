@@ -5,8 +5,8 @@
 	#define BLUE 1
 	#define FRONT 1
 	#define BACK -1
-    #define POS 1
-    #define NEG -1
+	#define POS 1
+	#define NEG -1
 
 	using namespace vex;
 
@@ -18,7 +18,7 @@
 
 	//Creates a competition object that allows access to Competition methods.
 	competition    Competition;
-	
+
 	// pointers to member functions https://www.ibm.com/support/knowledgecenter/en/SSLTBW_2.3.0/com.ibm.zos.v2r3.cbclx01/cplr034.htm
 
 
@@ -26,12 +26,13 @@
 
 	//mode
 	bool isCatapultReady = false;
-    bool isCatapultPriming = false;
+	bool isCatapultPriming = false;
 	bool canPew = false;
-    bool isCollectorPriming = false;
+	bool isCollectorPriming = false;
 	bool isCollectorReady = false;
 	bool canSmak = false;
 	bool isBraking = false;
+	bool canStopLift = true;
 	bool amIBlue = true;
 	bool areLEDsOn = false;
 	int isBallMode = 1; //ball mode
@@ -44,10 +45,16 @@
 	int FB, LR, T, Lift;
 	int FL, FR, BL, BR;
 
-	int flipRot = 0;
+	//flipper
+	//start position upward
+	int foldPos = 5;
+	int downPos = 233;
+	int placePos = 192;
+	int flipPos = 90;
+	float torqueLimit = 1.0;
 
-    //timers
-    double ledtime, modetime, drivetime;
+	//timers
+	double ledtime, modetime, drivetime, catprimetime, colprimetime;
 
 	/////////////////////////////////////// FUNCTIONS /////////////////////////////////////////////////////////////
 
@@ -63,7 +70,7 @@
 			} else {
 				LED.state(0,percentUnits::pct);
 			}
-            ledtime = Brain.timer(timeUnits::msec);
+			ledtime = Brain.timer(timeUnits::msec);
 		}
 	}
 
@@ -78,7 +85,7 @@
 			LED.state(100,percentUnits::pct);
 			areLEDsOn = true;
 			modetime = Brain.timer(timeUnits::msec);
-            //Brain.resetTimer();
+			//Brain.resetTimer();
 		}
 	}
 
@@ -91,9 +98,8 @@
 	void intake() {
 		Intake.spin(directionType::fwd, 600, velocityUnits::rpm);
 		Intake2.spin(directionType::rev, 600, velocityUnits::rpm);
-		//Brain.Screen.printAt(10,40,"Intake running at 600rpm");
 	}
-	
+
 	void intakeSpeed(int s) {
 		Intake.spin(directionType::fwd, s, velocityUnits::rpm);
 		Intake2.spin(directionType::rev, s, velocityUnits::rpm);
@@ -102,7 +108,6 @@
 	void outtake() {
 		Intake.spin(directionType::rev, 600, velocityUnits::rpm);
 		Intake2.spin(directionType::fwd, 600, velocityUnits::rpm);
-		//Brain.Screen.printAt(10,40,"Intake running at 600rpm");
 	}
 
 	void intakeStop() {
@@ -112,46 +117,87 @@
 	}
 
 	void liftUp() {
-		Intake.spin(directionType::fwd, 600, velocityUnits::rpm);
-		Intake2.spin(directionType::rev, 600, velocityUnits::rpm);
+		canStopLift = false;
+		Intake.spin(directionType::fwd, 200, velocityUnits::rpm);
+		Intake2.spin(directionType::fwd, 200, velocityUnits::rpm);
 	}
 
 	void liftDown() {
-		Intake.spin(directionType::rev, 600, velocityUnits::rpm);
-		Intake2.spin(directionType::fwd, 600, velocityUnits::rpm);
+		canStopLift = false;
+		Intake.spin(directionType::rev, 200, velocityUnits::rpm);
+		Intake2.spin(directionType::rev, 200, velocityUnits::rpm);
+	}
+	
+	void liftSpeed(int s) {
+		canStopLift = false;
+		Intake.spin(directionType::fwd, s, velocityUnits::rpm);
+		Intake2.spin(directionType::fwd, s, velocityUnits::rpm);
 	}
 
 	void liftStop() {
 		intakeStop();
+		canStopLift = true;
 	}
 
 	void catgo() {
-		Catapult.spin(directionType::fwd,200,velocityUnits::rpm);
+		Catapult.spin(directionType::fwd,16,velocityUnits::rpm);
 	}
 
 	void catstop() {
 		Catapult.stop(brakeType::coast);
 	}
 
-	void flipUp() {
-		Flipper.spin(directionType::fwd, 200, velocityUnits::rpm);
-		Brain.Screen.printAt(10,40,"Flipper running at 200rpm");
+	void foldUp() {
+		//Flipper.spin(directionType::fwd, 200, velocityUnits::rpm);
+		//Brain.Screen.printAt(10,40,"Flipper running at 200rpm");
+		liftSpeed(-200);
+		while (Intake.torque(torqueUnits::Nm) < .4) {
+			//Brain.Screen.printAt(0,180,"Torque is %0.1f", Intake.torque(torqueUnits::Nm));
+			sleep(20);
+		}
+		//liftSpeed(-100);
+		sleep(400);
+		Flipper.spin(directionType::rev, 100, velocityUnits::rpm);
+		while (Flipper.torque(torqueUnits::Nm) < .4) {
+			//Brain.Screen.printAt(0,140,"Torque is %0.1f", Flipper.torque(torqueUnits::Nm));
+			sleep(20);
+		}
+		Flipper.stop();
+		liftStop();
+		Flipper.rotateTo(foldPos, rotationUnits::deg, 100, velocityUnits::rpm);
+	}
+	
+	void flipReset() {
+		liftSpeed(-200);
+		while (Intake.torque(torqueUnits::Nm) < .35) {
+			//Brain.Screen.printAt(0,180,"Torque is %0.3f", Intake.torque(torqueUnits::Nm));
+			sleep(20);
+		}
+		Flipper.spin(directionType::rev, 100, velocityUnits::rpm);
+		while (Flipper.torque(torqueUnits::Nm) < .45) {
+			//Brain.Screen.printAt(0,140,"Torque is %0.3f", Flipper.torque(torqueUnits::Nm));
+			sleep(20);
+		}
+		Flipper.stop();
+		liftStop();
+		Flipper.resetRotation();
+		Flipper.rotateTo(foldPos, rotationUnits::deg, 100, velocityUnits::rpm);
 	}
 
 	void flipDown() {
-		Flipper.spin(directionType::rev, 200, velocityUnits::rpm);
-		Brain.Screen.printAt(10,40,"Flipper running at 200rpm");
+		Flipper.rotateTo(downPos, rotationUnits::deg, 100, velocityUnits::rpm);
 	}
 
 	void flipStop() {
-		Flipper.stop();
-		flipRot = Flipper.rotation(rotationUnits::deg);
+		Flipper.stop(brakeType::hold);
 	}
 
 	void flipOne() {
-		
+		Flipper.rotateTo(flipPos, rotationUnits::deg, 100, velocityUnits::rpm);
+		//sleep(100);
+		Flipper.rotateTo(placePos, rotationUnits::deg, 100, velocityUnits::rpm);
 	}
-	
+
 	void resetBaseEnc() {
 		FL_Base.resetRotation();
 		FR_Base.resetRotation();
@@ -160,12 +206,12 @@
 	}
 
 	void drive(int vel) { // + fwd - rev
-        BL = vel;
-        BR = -vel;
-        FR = -vel;
-        FL = vel;
+		BL = vel;
+		BR = -vel;
+		FR = -vel;
+		FL = vel;
 	}
-	
+
 	void driveIndiv(int fl, int br, int fr, int bl){
 		FL = fl;
 		FR = fr;
@@ -173,33 +219,33 @@
 		BR = br;
 	}
 
-    void driveLR(int L, int R) {
-        BL = L;
-        BR = -R;
-        FR = -R;
-        FL = L;
-    }
-	
-	void driveFB(int F, int B) {
-		BL = -B;
-        BR = -B;
-        FR = F;
-        FL = F;
+	void driveLR(int L, int R) {
+		BL = L;
+		BR = -R;
+		FR = -R;
+		FL = L;
 	}
 
-    void driveAxes(int snek, int lad) {
+	void driveFB(int F, int B) {
+		BL = -B;
+		BR = -B;
+		FR = F;
+		FL = F;
+	}
+
+	void driveAxes(int snek, int lad) {
 		//snek drives right lad drives left       
 		BL = lad;
-        BR = -snek;
-        FR = -lad;
-        FL = snek;
-    }
-	
+		BR = -snek;
+		FR = -lad;
+		FL = snek;
+	}
+
 	void strafe(int vel) { //+ right - left
-        FL = vel;
-        FR = vel;
-        BL = -vel;
-        BR = -vel;
+		FL = vel;
+		FR = vel;
+		BL = -vel;
+		BR = -vel;
 	}
 
 	void driveRot(int deg, bool waitForCompletion=false, int vel=200) {
@@ -286,11 +332,11 @@
 		drive(0);
 	}
 
-    void rot(int vel) {
+	void rot(int vel) {
 		FL = vel;
-        FR = vel;
-        BL = vel;
-        BR = vel;
+		FR = vel;
+		BL = vel;
+		BR = vel;
 	}
 
 	void rotRot(int deg, bool waitForCompletion=false, int vel=200) { 
@@ -307,7 +353,7 @@
 		}
 	}
 
-	void rotTo(int deg, bool waitForCompletion=false, int vel=200) { 
+	/* void rotTo(int deg, bool waitForCompletion=false, int vel=200) { 
 		if(waitForCompletion){
 			FL_Base.rotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
 			FR_Base.rotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
@@ -319,7 +365,7 @@
 			BL_Base.startRotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
 			BR_Base.startRotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
 		}
-	}
+	} */
 
 	void stopBase() {
 		FR = 0;
@@ -344,11 +390,11 @@
 		sleep(time);
 		stopBase();
 	}
-	
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////   ODOMETRY   /////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	
+
 	int derr, power, goal, aStep, initRot, rotDiff;
 	double kPr;
 
@@ -361,38 +407,38 @@
 		//avgBaseFwd = (int) (FL_Base.rotation(rotationUnits::deg) - FR_Base.rotation(rotationUnits::deg) + BL_Base.rotation(rotationUnits::deg) - BR_Base.rotation(rotationUnits::deg))>>2;
 		
 		//kP = 0.5;
-        kPr = 3;
+		kPr = 3;
 		goal = dist * 33; //multiplier in to deg
 		derr = goal - ((BaseL - BaseR)>>2);
-        
-        //accelerate to 200rpm in 100ms
-        aStep = copysign(1,dist)*5;
-        for(int c=0; c<40; c++) {
+		
+		//accelerate to 200rpm in 100ms
+		aStep = copysign(1,dist)*5;
+		for(int c=0; c<40; c++) {
 			driveLR(c*aStep, c*aStep+20);
-            task::sleep(6);
-        }
-        
-        //p to goal
+			task::sleep(6);
+		}
+		
+		//p to goal
 		while(abs(derr) > 3) {
 			//Brain.Screen.printAt(0,140,"%d %d", power, FL);
 			power = derr * kP;
 			power = power>max ? max : power;
 			if(keepRot) {
-                rotDiff = (GyroYaw.value(rotationUnits::deg)-initRot) * kPr;
-                driveLR(power - rotDiff, power + rotDiff);
-            }
-            else drive(power); 
+				rotDiff = (GyroYaw.value(rotationUnits::deg)-initRot) * kPr;
+				driveLR(power - rotDiff, power + rotDiff);
+			}
+			else drive(power); 
 			derr = goal - ((BaseL - BaseR)>>2);
-            sleep(5); //otherwise taking difference is meaningless
+			sleep(5); //otherwise taking difference is meaningless
 		}
 		stopBase();
-        //Brain.Screen.printAt(0,120,"Drive distance reached.");
+		//Brain.Screen.printAt(0,120,"Drive distance reached.");
 	}
-    
-	void strafeFor(int dist, double kP=0.5, bool keepRot=true) {
+
+	void strafeFor(int dist, double kP=0.6, bool keepRot=true) {
 		
 		//kP = 0.5;
-        kPr = 3;
+		kPr = 3;
 		goal = dist * 33;
 		
 		resetBaseEnc();
@@ -405,23 +451,23 @@
 			power = derr * kP;
 			power = power>200 ? 200 : power;
 			if(keepRot) {
-                rotDiff = (GyroYaw.value(rotationUnits::deg)-initRot) * kPr;
-                driveFB(power - rotDiff, power + rotDiff);
-            }
-            else strafe(power);   
+				rotDiff = (GyroYaw.value(rotationUnits::deg)-initRot) * kPr;
+				driveFB(power - rotDiff, power + rotDiff);
+			}
+			else strafe(power);   
 			derr = goal - ((BaseF - BaseB)>>2);
-            sleep(5); //otherwise taking difference is meaningless
+			sleep(5); //otherwise taking difference is meaningless
 		}
 		stopBase();
 	}
-	
+
 	void diagFor(int dist, int side, double kP=0.5, bool keepRot=false) {
 		//only drives one axis (Snek falling, Lad rising)
 		//Lad: BL, FR (/)		Snek: FL, BR (\)
 		//distance directly prop to rotations
 		//dist/2.75/pi*360 = 41.6696579
 		//kP = 0.5;
-        kPr = 3;
+		kPr = 3;
 		goal = dist * 42;
 		
 		resetBaseEnc();
@@ -461,30 +507,45 @@
 		}
 		stopBase();
 	}
-    
-    void rotFor(int deg, double kP=0.9) {
-        // radius of turning is approx 8 inches
+
+	void rotFor(int deg, double kP=0.9) {
+		// radius of turning is approx 8 inches
 		// given degrees, convert to radians and * r to find dist
-        // from dist, /2.75/pi to get degrees motor
+		// from dist, /2.75/pi to get degrees motor
 		// multiplier = 1/180*pi*8/2.75/pi*360 = 5.8181818181818
 		
 		resetBaseEnc();
 		
 		//kP = 0.9;
-        goal = deg * 5.7;
+		goal = deg * 5.7;
 		derr = goal - ((BaseR + BaseL)>>2);
 		
 		while(abs(derr) > 3) {
-			Brain.Screen.printAt(0,180,"%d %d", power, FL);
+			//Brain.Screen.printAt(0,180,"%d %d", power, FL);
 			power = derr * kP;
 			power = power>200 ? 200 : power;
 			rot(power);
 			derr = goal - ((BaseR + BaseL)>>2);
-            sleep(5); //otherwise taking differnce is meaningless
+			sleep(5); //otherwise taking difference is meaningless
 		}
 		stopBase();
-        Brain.Screen.printAt(0,140,"Drive distance reached.");
-    }
+		//Brain.Screen.printAt(0,140,"Drive distance reached.");
+	}
+
+	void rotTo(int deg, double kP=4){ //using gyro
+		goal = deg;
+		derr = goal*1.1 - GyroYaw.value(rotationUnits::deg);
+		
+		while(abs(derr) > 0.05) {
+			//Brain.Screen.printAt(0,180,"%d %d", power, FL);
+			power = derr * kP;
+			power = power>200 ? 200 : power;
+			rot(power);
+			derr = goal*1.07 - GyroYaw.value(rotationUnits::deg);
+			sleep(5); //otherwise taking difference is meaningless
+		}
+		stopBase();
+	}
 
 	void align() {
 		if(amIBlue) Vision.takeSnapshot(CAPBLUE);
@@ -493,8 +554,8 @@
 		}
 	}
 
-    int sensor() {
-		Brain.Screen.printAt(0,80, "sensor task running");
+	int sensor() {
+		//Brain.Screen.printAt(0,80, "sensor task running");
 		for(;;) {
 			BaseL = FL_Base.rotation(rotationUnits::deg) + BL_Base.rotation(rotationUnits::deg);
 			BaseR = FR_Base.rotation(rotationUnits::deg) + BR_Base.rotation(rotationUnits::deg);
@@ -502,8 +563,10 @@
 			BaseB = BR_Base.rotation(rotationUnits::deg) + BL_Base.rotation(rotationUnits::deg);
 			
 			//Brain.Screen.clearScreen();
-			Brain.Screen.printAt(0,100, "Gyro: %.2f", GyroPitch.value(rotationUnits::deg));
-            //Brain.Screen.printAt(0,100, "Average Base Drive: %d", avgBaseFwd);
+			Brain.Screen.printAt(0,100, "Gyro: %.2f", GyroYaw.value(rotationUnits::deg));
+			
+			
+			//Brain.Screen.printAt(0,100, "Average Base Drive: %d", avgBaseFwd);
 			//Brain.Screen.printAt(0,120, "Average Base Rotation: %d", avgBaseRot);
 			sleep(5); //used to be 20
 		}
@@ -514,9 +577,9 @@
 		canPew = false;
 		
 		//THIS IS RELYING ON REENGAGEMENT
-		/*if (isCollectorPriming) return;
+		/* if (isCollectorPriming) return;
 		//auto reload
-        isCatapultPriming = true;
+		isCatapultPriming = true;
 		Catapult.spin(directionType::fwd, 200, velocityUnits::rpm);
 		Brain.Screen.printAt(10,40, "Catapult Running");
 		sleep(600);
@@ -524,32 +587,63 @@
 			sleep(5);
 		}
 		Catapult.stop();
-		isCatapultPriming = false; */
+		isCatapultPriming = false;  */
+		
+		/*
+		//CATAPULT FIRE
+		void pew() {
+			Catapult.spin(directionType::fwd, 20, velocityUnits::rpm);
+			sleep(1000); // :P
+			Catapult.stop();
+		}
+		//CATAPULT RESET
+		void readyPew() {
+			while(CatBumper.value() == 1){
+				sleep(5);
+			}
+		Catapult.stop();
+		}
+		//CATAPULT MAIN FUNCTION
+		void trebuchetBAD() {
+			//canPew = true; //I don't care what your var used to be, but now it tells us if cat is down (might be same)
+			//yes it has to start in down position
+			if (canPew) {
+				readyPew();
+				canPew = true;
+			}
+			else {
+				pew();
+				canPew = false;
+			}
+		} */
 		
 		
 		//THIS IS RELYING ON NOT REENGAGING
-        if (isCollectorPriming) return;
+		if (isCollectorPriming || isBallMode == -1) return;
 		//auto reload
-        isCatapultPriming = true;
+		isCatapultPriming = true;
+		catprimetime = Brain.timer(timeUnits::msec);
 		Catapult.spin(directionType::fwd, 200, velocityUnits::rpm);
 		Brain.Screen.printAt(10,40, "Catapult Running");
-		sleep(300);
+		sleep(400);
 		if(CatBumper.value() == 0) {
 		//if button is pressed immedately, catapult is already lowered
+			//firing at a lower speed
+			Catapult.spin(directionType::fwd, 10, velocityUnits::rpm);
 			while(CatBumper.value() == 0){
-				sleep(1);
+				sleep(2);
 			}
 			Catapult.stop();
-			sleep(200);
+			sleep(300);
 			Catapult.spin(directionType::fwd, 200, velocityUnits::rpm);
-			//sleep(500); //delay to fire
+			//sleep(500); //delay to prime
 			
 		}//if not, catapult will simply prime
 		//sleep(400);
 		while(CatBumper.value() == 1){
-			sleep(5);
+			sleep(10);
 		}
-		Catapult.stop();
+		Catapult.stop(brakeType::coast);
 		isCatapultPriming = false;
 		
 		
@@ -576,46 +670,49 @@
 		
 	}
 
-    int smackTillButton() {
-        while(ColBumper.value() == 1) {
-              if (Catapult.torque(torqueUnits::Nm) >= 1.5) {
-                  Catapult.stop(brakeType::coast);
-                  isCollectorReady = false;
-                  return -1;
-              }
+	int smackTillButton() {
+		while(ColBumper.value() == 1) {
+			  if (Catapult.torque(torqueUnits::Nm) >= torqueLimit) {
+				  Catapult.stop(brakeType::coast);
+				  isCollectorReady = false;
+				  return -1;
+			  }
 			  sleep(2);
 		  }
-        return 1;
-    }
+		return 1;
+	}
 
 	void smack() {
 		canSmak = false;
-	   if(isCatapultPriming){
+	   if(isCatapultPriming || isBallMode == -1){
+		   return;
 		   // catapult is in motion, do not activate
-           Brain.Screen.clearScreen();
-           Brain.Screen.printAt(0,80,"Smack pressed, Catapult is spinning");
+		   //Brain.Screen.clearScreen();
+		   //Brain.Screen.printAt(0,80,"Smack pressed, Catapult is spinning");
 	   } else if(isCollectorReady) {
-           isCollectorPriming = true;
-           Brain.Screen.clearScreen();
-           Brain.Screen.printAt(0,80,"Smack pressed");
+		   isCollectorPriming = true;
+		   colprimetime = Brain.timer(timeUnits::msec);
+		   //Brain.Screen.clearScreen();
+		   //Brain.Screen.printAt(0,80,"Smack pressed");
 		   Catapult.spin(directionType::rev, 200,velocityUnits::rpm);
 		   sleep(300);
 		   Catapult.stop(brakeType::coast);
-           isCollectorReady = false;
-           isCollectorPriming = false;
+		   isCollectorReady = false;
+		   isCollectorPriming = false;
 	   } else {
-          isCollectorPriming = true;
-          Brain.Screen.clearScreen();
-          Brain.Screen.printAt(0,80,"Smack pressed, winding down");
+		  isCollectorPriming = true;
+		  colprimetime = Brain.timer(timeUnits::msec);
+		  //Brain.Screen.clearScreen();
+		  //Brain.Screen.printAt(0,80,"Smack pressed, winding down");
 		  Catapult.spin(directionType::rev, 200, velocityUnits::rpm);
-          if (smackTillButton() > 0){
-              Catapult.stop(brakeType::hold);
-              isCollectorReady = true;
-          } else {
-              Catapult.stop(brakeType::coast);
-              isCollectorReady = false;
-          }
-          isCollectorPriming = false;
+		  if (smackTillButton() > 0){
+			  Catapult.stop(brakeType::hold);
+			  isCollectorReady = true;
+		  } else {
+			  Catapult.stop(brakeType::coast);
+			  isCollectorReady = false;
+		  }
+		  isCollectorPriming = false;
 	   }
 	}
 
@@ -626,19 +723,19 @@
 		isCatapultReady = true;
 	}
 
-    void resetCat() {
-        smack();
-        trebuchet();
-    }
-	
+	void resetCat() {
+		smack();
+		trebuchet();
+	}
+
 	void pew() {
 		canPew = true;
 	}
-	
+
 	void smak() {
 		canSmak = true;
 	}
-	
+
 	///////////////////////////////////////// TASKS /////////////////////////////////////////////////////////////////
 
 	int launchCallback() {
@@ -657,7 +754,7 @@
 		for(;;) {
 			//FR_Base.spin(directionType::rev,isBallMode*1.6*(FB - isBallMode*T - LR),velocityUnits::rpm);
 			FR_Base.spin(directionType::fwd, FR, velocityUnits::rpm);
-            if (FR == 0) FR_Base.stop();
+			if (FR == 0) FR_Base.stop();
 			task::sleep(2);
 		}
 		return 1;
@@ -666,7 +763,7 @@
 		for(;;) {
 			//FL_Base.spin(directionType::fwd,isBallMode*1.6*(FB + isBallMode*T + LR),velocityUnits::rpm);
 			FL_Base.spin(directionType::fwd, FL, velocityUnits::rpm);
-            if (FL == 0) FL_Base.stop();
+			if (FL == 0) FL_Base.stop();
 			task::sleep(2);
 		}
 		return 1;
@@ -675,7 +772,7 @@
 		for(;;) {
 			//BR_Base.spin(directionType::rev,isBallMode*1.6*(FB - isBallMode*T + LR),velocityUnits::rpm);
 			BR_Base.spin(directionType::fwd, BR, velocityUnits::rpm);
-            if (BR == 0) BR_Base.stop();
+			if (BR == 0) BR_Base.stop();
 			task::sleep(2);
 		}
 		return 1;
@@ -684,7 +781,7 @@
 		for(;;) {
 			//BL_Base.spin(directionType::fwd,isBallMode*1.6*(FB + isBallMode*T - LR),velocityUnits::rpm);
 			BL_Base.spin(directionType::fwd, BL, velocityUnits::rpm);
-            if (BL == 0) BL_Base.stop();
+			if (BL == 0) BL_Base.stop();
 			task::sleep(2);
 		}
 		return 1;
@@ -692,19 +789,17 @@
 
 	int mainCallback() {
 		for(;;){
-          
-		  Controller.ButtonUp.pressed(toggleLEDs);
+		  
+		  //Controller.ButtonUp.pressed(toggleLEDs);
 			
 		  Controller.ButtonRight.pressed(toggleMode);
-		  Controller.ButtonRight.released(delayLEDsOff);
-            
-          //COMMENT OUT DURING COMPETITION
-          Controller.ButtonLeft.pressed(resetCat);
+		  //Controller.ButtonRight.released(delayLEDsOff);
+			
+		  //COMMENT OUT DURING COMPETITION
+		  Controller.ButtonLeft.pressed(resetCat);
 
-		  Controller.ButtonUp.pressed(flipUp);
-		  Controller.ButtonUp.released(flipStop);
+		  Controller.ButtonUp.pressed(foldUp);
 		  Controller.ButtonDown.pressed(flipDown);
-		  Controller.ButtonDown.released(flipStop);
 		  Controller.ButtonB.pressed(flipOne);
 		  
 		  Controller.ButtonR1.pressed(pew);
@@ -729,114 +824,116 @@
 
 	task launchTask = task(launchCallback);
 	task mainTask = task(mainCallback);
-    task sensorTask = task(sensor);
-    task BLTask = task(BLCallback);
-    task FRTask = task(FRCallback);
-    task BRTask = task(BRCallback);
-    task FLTask = task(FLCallback);
+	task sensorTask = task(sensor);
+	task BLTask = task(BLCallback);
+	task FRTask = task(FRCallback);
+	task BRTask = task(BRCallback);
+	task FLTask = task(FLCallback);
 
 	///////////////////////////////////////// AUTONS /////////////////////////////////////////////////////////////////	
 
-    
 
 	void park() {
 		// drives forward until parks
 		//GyroPitch.startCalibration();
 		//sleep(1500);
-        intake();
+		intake();
 		while(GyroPitch.value(rotationUnits::deg) > -12) {
 			drive(200);
 		}
 		while(GyroPitch.value(rotationUnits::deg) < -2) {
 			drive(200);
 		}
-        sleep(200);
-        intakeStop();
+		sleep(200);
+		intakeStop();
 		stopBase();
 	}
-	
-    void fetch() {
-        //nabs bol
-        intake();
-        driveFor(32);
-        sleep(500);
-        driveFor(-32);
-        intakeStop();
-    }
-	
+
+	void fetch() {
+		//nabs bol
+		intake();
+		driveFor(32);
+		sleep(500);
+		driveFor(-32);
+		intakeStop();
+	}
+
 	void fetchFlip(bool plsPrimeCatapult=true) {
 		//when at cap, collects balls and drives back and flips cap
 		Catapult.spin(directionType::rev, 200, velocityUnits::rpm); //lower smack
-        while(Catapult.torque(torqueUnits::Nm) < .85){
-            sleep(2);
-        }
+		while(Catapult.torque(torqueUnits::Nm) < .8){
+			sleep(2);
+		}
 		intake();
 		
 		driveFor(-12);
-        intakeStop(); 				//balls often not fully intaken
-        isCollectorReady=false;
-        smak(); 					//lower collector
-        driveFor(12);
-        if(plsPrimeCatapult)pew(); 	//flip cap and lower cat
+		intakeStop();				//balls often not fully intaken
+		isCollectorReady=false;
+		torqueLimit = 1.5;
+		smak(); 					//lower collector
+		driveFor(12);
+		if(plsPrimeCatapult)pew(); 	//flip cap and lower cat
 		else smak(); 				//just flip cap
-        intake(); 					//continue intaking balls
+		torqueLimit = 1.0;
+		intake(); 					//continue intaking balls
 	}
 
-    void anticross(int side=RIGHT){
-        //fire mid first, our column last
-        intake();
-        driveFor(33);
-        //rotFor(side * 73); //aim for middle flags
-        //sleep(300);
-        //trebuchet();
-        //intakeStop();
-        rotFor(side * 45); //45 degrees
-        diagFor(side*12, side*NEG);
-        strafeFor(side*20);
-        
-        intakeSpeed(60); 	//spinning at 40rpm
+	void anticross(int side=RIGHT){
+		//fire mid first, our column last
+		intake();
+		driveFor(33);
+		//rotFor(side * 73); //aim for middle flags
+		//sleep(300);
+		//trebuchet();
+		//intakeStop();
+		rotFor(side * 45); //45 degrees
+		diagFor(side*12, side*NEG);
+		strafeFor(side*20);
+		
+		intakeSpeed(60); 	//spinning at 40rpm
 		driveFor(4,50,0.7); //slow drive nom cap
-        sleep(700);			//wait for balls to settle
+		sleep(700);			//wait for balls to settle
 		
-        Catapult.spin(directionType::fwd, 200, velocityUnits::rpm); //run catapult
-        sleep(500);
-        Catapult.stop();
+		pew();
+		//Catapult.spin(directionType::fwd, 200, velocityUnits::rpm); //run catapult
+		//sleep(500);
+		//Catapult.stop();
 		
-        sleep(600);
+		sleep(600);
 		
-		
-        //smack lower until resistance
+		//smack lower until resistance
 		fetchFlip();
-        // Catapult.spin(directionType::rev, 200, velocityUnits::rpm); //lower smack
-        // while(Catapult.torque(torqueUnits::Nm) < .85){
-            // sleep(2);
-        // }
-        // Catapult.stop();
-       
+		// Catapult.spin(directionType::rev, 200, velocityUnits::rpm); //lower smack
+		// while(Catapult.torque(torqueUnits::Nm) < .85){
+			// sleep(2);
+		// }
+		// Catapult.stop();
+	   
 		// driveFor(-12);
-        // intakeStop();
-        // isCollectorReady=false;
-        // smak(); //lower collector
-        // driveFor(12);
-        // pew(); //flip cap and lower trebuchet
-        // intake();
+		// intakeStop();
+		// isCollectorReady=false;
+		// smak(); //lower collector
+		// driveFor(12);
+		// pew(); //flip cap and lower trebuchet
+		// intake();
 		
-        driveFor(-16);
-        rotFor(side*44);
+		driveFor(-16);
+		rotFor(side*44);
 		driveFor(-8);
-        pew();
-        sleep(1500);
-        intakeStop();
+		pew();
+		sleep(200);
+		rotTo(-90);
+		//driveFor();
+		sleep(1500);
+		intakeStop();
 		
-        //Controller.rumble("- -");
-        //drive(-100);
-		//sleep(200);
+		//Controller.rumble("- -");
 		
-        sleep(500);
-        stopBase();
-    }
+		sleep(500);
+		stopBase();
+	}
 
-	
+
 	void oleReliable(int side=RIGHT) {
 		fetch();
 		rotFor(side * 90); //face flags
@@ -848,9 +945,9 @@
 		fetchFlip();
 	}
 
-    void testing(motor *m, int vel) {
+	void testing(motor *m, int vel) {
 		m->spin(directionType::fwd, vel, velocityUnits::rpm);
-    }
+	}
 
 	/*---------------------------------------------------------------------------*/
 	/*                          Pre-Autonomous Functions                         */
@@ -866,11 +963,18 @@
 	  // All activities that occur before the competition starts
 	  // Example: clearing encoders, setting servo positions, ...
 		isBallMode = true;
-		isCatapultReady = false;
-        isCollectorReady = false;
+		isCatapultReady = true;
+		isCollectorReady = false;
 		isBraking = false;
 		amIBlue = true;
 		areLEDsOn = false;
+		
+		Flipper.setStopping(brakeType::hold);
+		
+		BL_Base.setStopping(brakeType::hold);
+		BR_Base.setStopping(brakeType::hold);
+		FL_Base.setStopping(brakeType::hold);
+		FR_Base.setStopping(brakeType::hold);
 	}
 
 	/*---------------------------------------------------------------------------*/
@@ -885,27 +989,19 @@
 
 	void autonomous( void ) {
 		Brain.Screen.print("Robot is in Autonomous mode");
-        
-        isCatapultReady = true;
-        
-		BL_Base.setStopping(brakeType::hold);
-        BR_Base.setStopping(brakeType::hold);
-        FL_Base.setStopping(brakeType::hold);
-        FR_Base.setStopping(brakeType::hold);
-        
-        //sleep(1000);
-        
-        anticross(LEFT);
-        //park();
-        
-        //testing(&Catapult, 200);
-        //sleep(100);
-        //Catapult.stop();
-        sleep(500);
-        BL_Base.setStopping(brakeType::coast);
-        BR_Base.setStopping(brakeType::coast);
-        FL_Base.setStopping(brakeType::coast);
-        FR_Base.setStopping(brakeType::coast);
+		
+		//anticross(LEFT);
+		//park();
+		fetchFlip(false);
+		
+		//testing(&Catapult, 200);
+		//sleep(100);
+		//Catapult.stop();
+		sleep(500);
+		BL_Base.setStopping(brakeType::coast);
+		BR_Base.setStopping(brakeType::coast);
+		FL_Base.setStopping(brakeType::coast);
+		FR_Base.setStopping(brakeType::coast);
 	}
 
 	/*---------------------------------------------------------------------------*/
@@ -920,15 +1016,17 @@
 
 	void usercontrol( void ) {
 	  // User control code here, inside the loop
-	    
+		
 		//sensorTask.stop();
-        Brain.Screen.print("Robot is in Driver mode");
-        
-        BL_Base.setStopping(brakeType::coast);
-        BR_Base.setStopping(brakeType::coast);
-        FL_Base.setStopping(brakeType::coast);
-        FR_Base.setStopping(brakeType::coast);
-        
+		Brain.Screen.print("Robot is in Driver mode");
+		
+		BL_Base.setStopping(brakeType::coast);
+		BR_Base.setStopping(brakeType::coast);
+		FL_Base.setStopping(brakeType::coast);
+		FR_Base.setStopping(brakeType::coast);
+		
+		flipReset();
+		
 	  while (1) {
 		// This is the main execution loop for the user control program.
 		// Each time through the loop your program should update motor + servo 
@@ -947,16 +1045,16 @@
 		  Lift = Controller.Axis2.position(percentUnits::pct);
 		  
 		  if (abs(Lift)> 80) {
-              T = 0;
-              Intake.spin(directionType::fwd, Lift, percentUnits::pct);
-              Intake2.spin(directionType::fwd, Lift, percentUnits::pct);
-		  } else {
-              T = Controller.Axis1.value();
-              if (!(Controller.ButtonR2.pressing() || Controller.ButtonL2.pressing())) {
-                  Intake.stop();
-                  Intake2.stop();
-              }
-          }
+			  T = 0;
+			  Intake.spin(directionType::fwd, Lift, percentUnits::pct);
+			  Intake2.spin(directionType::fwd, Lift, percentUnits::pct);
+		  } else if (canStopLift) {
+			  T = Controller.Axis1.value();
+			  if (!(Controller.ButtonR2.pressing() || Controller.ButtonL2.pressing())) {
+				  Intake.stop();
+				  Intake2.stop();
+			  }
+		  }
 		  
 		  /* FL_Base.spin(directionType::fwd,isBallMode*2*(FB + isBallMode*T + LR),velocityUnits::rpm);
 		  FR_Base.spin(directionType::rev,isBallMode*2*(FB - isBallMode*T - LR),velocityUnits::rpm);
