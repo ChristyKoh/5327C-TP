@@ -186,6 +186,25 @@
 		Flipper.resetRotation();
 		Flipper.rotateTo(foldPos, rotationUnits::deg, 100, velocityUnits::rpm);
 	}
+	
+	void placeCap() {
+		liftUp();
+		double initLift = Intake.rotation(rotationUnits::deg);
+		sleep(200);
+		//while (Flipper.torque(torqueUnits::Nm) < .24) {
+		while (abs(Intake.rotation(rotationUnits::deg)) - initLift > 0) {
+			//Brain.Screen.printAt(0,140,"initFlip is %d", initFlip - (int)Flipper.rotation(rotationUnits::deg));
+			initLift = abs(Intake.rotation(rotationUnits::deg));
+			sleep(20);
+		}
+		Intake.stop(brakeType::hold);
+		Intake2.stop(brakeType::hold);
+		canStopLift = false;				//hold lift at topmost position
+		
+		sleep(2500);
+		
+		canStopLift = true;
+	}
 
 	void flipDown() {
 		Flipper.rotateTo(downPos, rotationUnits::deg, 100, velocityUnits::rpm);
@@ -596,6 +615,8 @@
 			Brain.Screen.printAt(0,120, "GyroPitch: %.2f", GyroPitch.value(rotationUnits::deg));
 			//Brain.Screen.printAt(10,40, "%d", TopColBumper.value());
 			
+			
+			
 			//Brain.Screen.printAt(0,100, "Average Base Drive: %d", avgBaseFwd);
 			//Brain.Screen.printAt(0,120, "Average Base Rotation: %d", avgBaseRot);
 			sleep(5); //used to be 20
@@ -660,7 +681,7 @@
 		//if button is pressed immedately, catapult is already lowered
 			//firing at a lower speed
 			Catapult.spin(directionType::fwd, 10, velocityUnits::rpm);
-			while(CatBumper.value() == 0){
+			while(CatBumper.value() == 0 && Brain.timer(timeUnits::msec)-catprimetime < 800){
 				sleep(2);
 			}
 			Catapult.stop();
@@ -670,7 +691,8 @@
 			
 		}//if not, catapult will simply prime
 		//sleep(400);
-		while(CatBumper.value() == 1){
+		catprimetime = Brain.timer(timeUnits::msec);
+		while(CatBumper.value() == 1 && Brain.timer(timeUnits::msec)-catprimetime < 2000){
 			sleep(10);
 		}
 		Catapult.stop(brakeType::coast);
@@ -713,10 +735,12 @@
 	}
 
 	int smackTillButton() {
+		colprimetime = Brain.timer(timeUnits::msec);
 		while(ColBumper.value() == 1) {
 			  if (Catapult.torque(torqueUnits::Nm) >= torqueLimit) {
-				  Catapult.stop(brakeType::coast);
-				  isCollectorReady = false;
+				  return -1;
+			  }
+			  if (Brain.timer(timeUnits::msec)-colprimetime > 2000) {
 				  return -1;
 			  }
 			  sleep(2);
@@ -832,9 +856,9 @@
 	int mainCallback() {
 		for(;;){
 		  
-		  //Controller.ButtonUp.pressed(toggleLEDs);
+		  Controller.ButtonRight.pressed(toggleLEDs);
 			
-		  Controller.ButtonRight.pressed(toggleMode);
+		  //Controller.ButtonRight.pressed(toggleMode);
 		  //Controller.ButtonRight.released(delayLEDsOff);
 			
 		  //COMMENT OUT DURING COMPETITION
@@ -976,7 +1000,7 @@
 		sleep(400);
 		
 		Catapult.spin(directionType::fwd, 200, velocityUnits::rpm);
-		sleep(400);
+		sleep(500);
 		Catapult.stop();
 		
 		intakeStop();
@@ -984,7 +1008,7 @@
 		if(side == LEFT) {
 			rotForGyro(side * 9);
 			driveFor(40, 200, 0.8);			// toggle bottom flag
-			driveFor(-24);
+			driveFor(-26);
 		}
 		else {
 			rotForGyro(side * 8);
@@ -992,21 +1016,29 @@
 			driveFor(-21);
 		}
 		rotFor(side * -43);
-		if(side == LEFT)strafeFor(side*-17); 	// strafe to cap
+		if(side == LEFT)strafeFor(side*-15); 	// strafe to cap
 		else strafeFor(-17);
 		intakeSpeed(100);
 		driveFor(2,50,0.7); //slow drive nom cap
 		fetchFlip();			// get balls, flip cap*/
 		driveFor(-6);
-		//sleep(500);
-		//strafeFor(side*-10);
 		sleep(1500);
-		pew();
+		//strafeFor(side*-10);
+		//sleep(1500);
+		//pew();
 		intakeStop();
 	}
 
 	void testing(motor *m, int vel) {
 		m->spin(directionType::fwd, vel, velocityUnits::rpm);
+	}
+	
+	void backPark(int side=RIGHT) {
+		intake();
+		driveFor(34);
+		//driveFor(-2);
+		rotFor(side * 90);
+		park();
 	}
 
 	/*---------------------------------------------------------------------------*/
@@ -1029,7 +1061,7 @@
 		amIBlue = true;
 		areLEDsOn = false;
 		
-		//Flipper.setStopping(brakeType::hold);
+		Flipper.setStopping(brakeType::hold);
 		
 		BL_Base.setStopping(brakeType::hold);
 		BR_Base.setStopping(brakeType::hold);
@@ -1049,8 +1081,10 @@
 
 	void autonomous( void ) {
 		Brain.Screen.print("Robot is in Autonomous mode");
-		
-		oleReliable(RIGHT);
+        //placeCap();
+		//oleReliable(RIGHT);
+        backPark(LEFT);
+        //anticross(LEFT);
 		//intakeSpeed(100);
 		//park();
 		//fetchFlip(true);
@@ -1092,6 +1126,7 @@
 		FL_Base.setStopping(brakeType::coast);
 		FR_Base.setStopping(brakeType::coast);
 		
+		Flipper.setStopping(brakeType::hold);
 		//flipReset();
 		
 	  while (1) {
