@@ -48,7 +48,7 @@
 
 	//flipper
 	//start position upward
-	int foldPos = 30;
+	int foldPos = 5;
 	int downPos = 233;
 	int placePos = 192;
 	int flipPos = 90;
@@ -187,7 +187,7 @@
 		Flipper.rotateTo(foldPos, rotationUnits::deg, 100, velocityUnits::rpm);
 	}
 	
-	void placeCap() {
+	/* void placeCap() {
 		liftUp();
 		double initLift = Intake.rotation(rotationUnits::deg);
 		sleep(200);
@@ -200,10 +200,15 @@
 		Intake.stop(brakeType::hold);
 		Intake2.stop(brakeType::hold);
 		canStopLift = false;				//hold lift at topmost position
-		
+
 		sleep(2500);
 		
 		canStopLift = true;
+	} */
+	
+	void placeCap(){
+		liftSpeed(-100);
+		drivefor(
 	}
 
 	void flipDown() {
@@ -627,48 +632,6 @@
 	void trebuchet() {
 		canPew = false;
 		
-		//THIS IS RELYING ON REENGAGEMENT
-		/* if (isCollectorPriming) return;
-		//auto reload
-		isCatapultPriming = true;
-		Catapult.spin(directionType::fwd, 200, velocityUnits::rpm);
-		Brain.Screen.printAt(10,40, "Catapult Running");
-		sleep(600);
-		while(CatBumper.value() == 1){
-			sleep(5);
-		}
-		Catapult.stop();
-		isCatapultPriming = false;  */
-		
-		/*
-		//CATAPULT FIRE
-		void pew() {
-			Catapult.spin(directionType::fwd, 20, velocityUnits::rpm);
-			sleep(1000); // :P
-			Catapult.stop();
-		}
-		//CATAPULT RESET
-		void readyPew() {
-			while(CatBumper.value() == 1){
-				sleep(5);
-			}
-		Catapult.stop();
-		}
-		//CATAPULT MAIN FUNCTION
-		void trebuchetBAD() {
-			//canPew = true; //I don't care what your var used to be, but now it tells us if cat is down (might be same)
-			//yes it has to start in down position
-			if (canPew) {
-				readyPew();
-				canPew = true;
-			}
-			else {
-				pew();
-				canPew = false;
-			}
-		} */
-		
-		
 		//THIS IS RELYING ON NOT REENGAGING
 		if (isCollectorPriming || isBallMode == -1) return;
 		//auto reload
@@ -687,7 +650,6 @@
 			Catapult.stop();
 			sleep(300);
 			Catapult.spin(directionType::fwd, 200, velocityUnits::rpm);
-			//sleep(500); //delay to prime
 			
 		}//if not, catapult will simply prime
 		//sleep(400);
@@ -697,28 +659,6 @@
 		}
 		Catapult.stop(brakeType::coast);
 		isCatapultPriming = false;
-		
-		
-		/* isCatapultPriming = true;
-		if(isCatapultReady) {
-			//catapult down, fire
-		   // Catapult.RotateFor(1,rotationUnits::rev,200,velocityUnits::rpm);
-			Catapult.spin(directionType::fwd, 200,velocityUnits::rpm);
-			Brain.Screen.printAt(10,40, "Catapult Firing");
-			sleep(500);
-			Catapult.stop();
-			isCatapultReady = true;
-		} else {
-			//catapult up, start moving arm
-			Catapult.spin(directionType::fwd, 200, velocityUnits::rpm);
-			Brain.Screen.printAt(10,40, "Catapult Running");
-			while(CatBumper.value() == 1){
-				sleep(20);
-			}
-			Catapult.stop();
-			isCatapultReady = true;
-		}
-		isCatapultPriming = false;  */
 		
 	}
 	
@@ -801,6 +741,8 @@
 	void smak() {
 		canSmak = true;
 	}
+	
+	
 
 	///////////////////////////////////////// TASKS /////////////////////////////////////////////////////////////////
 
@@ -1019,7 +961,7 @@
 		if(side == LEFT)strafeFor(side*-15); 	// strafe to cap
 		else strafeFor(-17);
 		intakeSpeed(100);
-		driveFor(2,50,0.7); //slow drive nom cap
+		driveFor(2,50,0.7); 	//slow drive nom cap
 		fetchFlip();			// get balls, flip cap*/
 		driveFor(-6);
 		sleep(1500);
@@ -1148,8 +1090,7 @@
 		  
 		  if (abs(Lift)> 80) {
 			  T = 0;
-			  Intake.spin(directionType::fwd, Lift, percentUnits::pct);
-			  Intake2.spin(directionType::fwd, Lift, percentUnits::pct);
+			  liftSpeed(Lift);
 		  } else {
 			  T = Controller.Axis1.value();
 			  if (canStopLift && (!(Controller.ButtonR2.pressing() || Controller.ButtonL2.pressing()))) {
