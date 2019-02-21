@@ -25,6 +25,7 @@
 	/////////////////////////////////////// VARIABLES /////////////////////////////////////////////////////////////
 
 	//mode
+	bool isAutonBase = false;
 	bool isCatapultReady = false;
 	bool isCatapultPriming = false;
 	bool canPew = false;
@@ -48,8 +49,8 @@
 
 	//flipper
 	//start position upward
-	int foldPos = 10;
-	int downPos = 233;
+	int foldPos = 20;
+	int downPos = 240;
 	int placePos = 192;
 	int flipPos = 90;
 	float torqueLimit = 1.0;
@@ -183,23 +184,21 @@
 		Controller.rumble("-");
 		liftHold();				//hold lift at bottommost position
 		
-		Flipper.resetRotation();
 		double initFlip = Flipper.rotation(rotationUnits::deg);
 		Flipper.spin(directionType::rev, 100, velocityUnits::rpm);
-		sleep(50);
+		sleep(200);
 		torquetime = Brain.timer(timeUnits::msec);
-		while (abs(Flipper.rotation(rotationUnits::deg) - initFlip) > 3 && delta_t < 2000) {
-			Brain.Screen.printAt(0,140,"initFlip is %f", initFlip - Flipper.rotation(rotationUnits::deg));
-			Brain.Screen.printAt(0,160,"time elapsed: %f" , delta_t); 
+		while (abs(Flipper.rotation(rotationUnits::deg) - initFlip) > 3 && Brain.timer(timeUnits::msec) - torquetime < 2000) {
 			initFlip = Flipper.rotation(rotationUnits::deg);
-			delta_t = Brain.timer(timeUnits::msec) - torquetime;
 			sleep(100);
 		}
-		Flipper.stop(brakeType::coast);
-		Controller.rumble("-");
-		liftStop(); //allow reg control of lift
+		Flipper.stop(brakeType::hold);
 		Flipper.resetRotation();
-		Flipper.rotateTo(foldPos, rotationUnits::deg, 100, velocityUnits::rpm);
+		sleep(500);
+		Controller.rumble("-");
+		liftStop(); // stop hold, allow reg control of lift
+		
+		Flipper.rotateTo(foldPos, rotationUnits::deg, 5, velocityUnits::rpm);
 	}
 	
 	void placeCap() {
@@ -303,20 +302,6 @@
 		}
 	}
 
-	void driveTo(int deg, bool waitForCompletion=false, int vel=200) {
-		if(waitForCompletion){
-			FL_Base.rotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			FR_Base.rotateTo(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BL_Base.rotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BR_Base.rotateTo(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
-		} else {
-			FL_Base.startRotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			FR_Base.startRotateTo(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BL_Base.startRotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BR_Base.startRotateTo(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
-		}
-	}
-
 	void strafeRot(int deg, bool waitForCompletion=false, int vel=200) {
 		if(waitForCompletion){
 			FL_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
@@ -380,7 +365,7 @@
 		BR = vel;
 	}
 
-	void rotRot(int deg, bool waitForCompletion=false, int vel=200) { 
+	void rotRot(int deg, int vel=200, bool waitForCompletion=false) { 
 		if(waitForCompletion){
 			FL_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
 			FR_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
@@ -393,20 +378,6 @@
 			BR_Base.startRotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
 		}
 	}
-
-	/* void rotTo(int deg, bool waitForCompletion=false, int vel=200) { 
-		if(waitForCompletion){
-			FL_Base.rotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			FR_Base.rotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BL_Base.rotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BR_Base.rotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-		} else {
-			FL_Base.startRotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			FR_Base.startRotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BL_Base.startRotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BR_Base.startRotateTo(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-		}
-	} */
 
 	void stopBase() {
 		FR = 0;
@@ -632,6 +603,7 @@
 			//Brain.Screen.clearScreen();
 			Brain.Screen.printAt(0,100, "Gyro: %.2f", GyroYaw.value(rotationUnits::deg));
 			Brain.Screen.printAt(0,120, "GyroPitch: %.2f", GyroPitch.value(rotationUnits::deg));
+			//Brain.Screen.printAt(0,180,"flipper rotation is %f", Flipper.rotation(rotationUnits::deg));
 			//Brain.Screen.printAt(10,40, "%d", TopColBumper.value());
 			
 			
@@ -739,7 +711,7 @@
 	void trebStop() {
 		//called when bumper is pressed
 		Catapult.stop();
-		Brain.Screen.printAt(10,40, "Ready Position Reached");
+		//Brain.Screen.printAt(10,40, "Ready Position Reached");
 		isCatapultReady = true;
 	}
 
@@ -754,6 +726,34 @@
 
 	void smak() {
 		canSmak = true;
+	}
+	
+	void park() {
+		// drives forward until parks
+		//GyroPitch.startCalibration();
+		//sleep(1500);
+		canStopLift = false;
+		isAutonBase = true;
+		
+		Brain.Screen.printAt(10,40, "Park initiated");
+		intake();
+		Brain.Screen.printAt(10,40, "intake initiated");
+		drive(200);
+		Brain.Screen.printAt(10,40, "drive initiated");
+		while(GyroPitch.value(rotationUnits::deg) < 12) {
+			sleep(20);
+		}
+		Brain.Screen.printAt(10,40, "Park crossed peak");
+		while(GyroPitch.value(rotationUnits::deg) > 2) {
+			sleep(20);
+		}
+		Brain.Screen.printAt(10,40, "Park complete");
+		sleep(200);
+		intakeStop();
+		stopBase();
+		
+		canStopLift = true;
+		isAutonBase = false;
 	}
 	
 	
@@ -820,7 +820,8 @@
 		  //COMMENT OUT DURING COMPETITION
 		  //Controller.ButtonLeft.pressed(resetCat);
 		  Controller.ButtonLeft.pressed(placeCap);
-		  Controller.ButtonRight.pressed(flipReset);
+		  Controller.ButtonRight.pressed(park);
+		  //Controller.ButtonRight.pressed(flipReset);
 
 		  Controller.ButtonUp.pressed(foldUp);
 		  Controller.ButtonDown.pressed(flipDown);
@@ -857,21 +858,10 @@
 	///////////////////////////////////////// AUTONS /////////////////////////////////////////////////////////////////	
 
 
-	void park() {
-		// drives forward until parks
-		//GyroPitch.startCalibration();
-		//sleep(1500);
-		intake();
-		drive(200);
-		while(GyroPitch.value(rotationUnits::deg) < 12) {
-			sleep(20);
-		}
-		while(GyroPitch.value(rotationUnits::deg) > 2) {
-			sleep(20);
-		}
-		sleep(200);
-		intakeStop();
-		stopBase();
+	
+	
+	void parkmatch() {
+		
 	}
 
 	void fetch() {
@@ -1012,12 +1002,14 @@
 	void pre_auton( void ) {
 	  // All activities that occur before the competition starts
 	  // Example: clearing encoders, setting servo positions, ...
+	    isAutonBase = true;
 		isBallMode = true;
 		isCatapultReady = true;
 		isCollectorReady = false;
 		isBraking = false;
 		amIBlue = true;
 		areLEDsOn = false;
+		
 		
 		Flipper.setStopping(brakeType::hold);
 		
@@ -1073,6 +1065,7 @@
 		
 		//sensorTask.stop();
 		Brain.Screen.print("Robot is in Driver mode");
+		isAutonBase = false;
 		isCollectorPriming = false;
 		isCatapultPriming = false;
 		isCatapultReady = false;
@@ -1093,14 +1086,16 @@
 		// values based on feedback from the joysticks.
 		  
 		  //Controller.ButtonL2.pressed(toggleBrake);
-
+		  
 		  FB = Controller.Axis3.position(percentUnits::pct);
 		  LR = Controller.Axis4.position(percentUnits::pct);
 		  
-		  FR = isBallMode*-2*(FB - isBallMode*T - LR);
-		  FL = isBallMode*2*(FB + isBallMode*T + LR);
-		  BR = isBallMode*-2*(FB - isBallMode*T + LR);
-		  BL = isBallMode*2*(FB + isBallMode*T - LR);
+		  if (!isAutonBase) {
+			  FR = isBallMode*-2*(FB - isBallMode*T - LR);
+			  FL = isBallMode*2*(FB + isBallMode*T + LR);
+			  BR = isBallMode*-2*(FB - isBallMode*T + LR);
+			  BL = isBallMode*2*(FB + isBallMode*T - LR);
+		  }
 		  
 		  Lift = Controller.Axis2.position(percentUnits::pct);
 		  

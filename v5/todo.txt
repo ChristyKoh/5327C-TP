@@ -1,0 +1,33 @@
+prog todo
+- vision aiming
+- odom testing
+	- compare indiv rots vs average
+	- strafing jerk stuff
+- cap place macro
+- autonnnnz
+- prog skilllllllz
+
+
+mechanical fixes todo
+- climbing sprocket change
+- basket fixing
+- flipper reliability (wait till prog testing)
+- cap aligner
+- prep replacement cat arm w/ polycarb
+
+judging!!!!1!1!11
+- map out characteristics of robit
+- coach individual memebers
+	- enthusiasm! convincing sense of knowing the system super well!!!!
+	- how to demonstrate effectively with the robot
+- using cads to explain
+- practice sessions with Ms. Zavadil (last few days)
+
+notahbook
+- outline plans for future
+- plan to incorporate sketch book
+
+practice driving please
+
+next iteration
+- bogie
