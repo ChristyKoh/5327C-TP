@@ -46,6 +46,8 @@
 	int FB, LR, T, Lift;
 	int FL, FR, BL, BR;
 	float initGyro;
+	
+	//lift
 
 	//flipper
 	//start position upward
@@ -56,7 +58,7 @@
 	float torqueLimit = 1.0;
 
 	//timers
-	double ledtime, modetime, drivetime, catprimetime, colprimetime, torquetime, placetime;
+	double ledtime, modetime, drivetime, catprimetime, colprimetime, torquetime, lifttime;
 
 	/////////////////////////////////////// FUNCTIONS /////////////////////////////////////////////////////////////
 
@@ -98,16 +100,19 @@
 	}
 
 	void intake() {
+		canStopLift = false;
 		Intake.spin(directionType::fwd, 600, velocityUnits::rpm);
 		Intake2.spin(directionType::rev, 600, velocityUnits::rpm);
 	}
 
 	void intakeSpeed(int s) {
+		canStopLift = false;
 		Intake.spin(directionType::fwd, s, velocityUnits::rpm);
 		Intake2.spin(directionType::rev, s, velocityUnits::rpm);
 	}
 
 	void outtake() {
+		canStopLift = false;
 		Intake.spin(directionType::rev, 600, velocityUnits::rpm);
 		Intake2.spin(directionType::fwd, 600, velocityUnits::rpm);
 	}
@@ -145,6 +150,21 @@
 		Intake.stop(brakeType::hold);
 		Intake2.stop(brakeType::hold);
 		canStopLift = false;
+	}
+	
+	void liftTop() {
+		liftUp();
+		double initLift = Intake.rotation(rotationUnits::deg);
+		sleep(200);
+		lifttime = Brain.timer(timeUnits::msec);
+		while (abs(Intake.rotation(rotationUnits::deg) - initLift) > 0 && Brain.timer(timeUnits::msec) - lifttime < 5000) {
+			//Brain.Screen.printAt(0,140,"initFlip is %d", initFlip - (int)Flipper.rotation(rotationUnits::deg));
+			initLift = Intake.rotation(rotationUnits::deg);
+			sleep(20);
+		}
+		// Controller.rumble("-");
+		liftSpeed(50);
+		liftHold();				//hold lift at topmost position
 	}
 
 	void catgo() {
@@ -200,29 +220,6 @@
 		
 		Flipper.rotateTo(foldPos, rotationUnits::deg, 5, velocityUnits::rpm);
 	}
-	
-	void placeCap() {
-		placetime = Brain.timer(timeUnits::msec);
-		while (!Controller.ButtonLeft.pressing()){
-			intake();
-			/* liftUp();
-			double initLift = Intake.rotation(rotationUnits::deg);
-			sleep(200);
-			while (abs(Intake.rotation(rotationUnits::deg)) - initLift > 0) {
-				//Brain.Screen.printAt(0,140,"initFlip is %d", initFlip - (int)Flipper.rotation(rotationUnits::deg));
-				initLift = abs(Intake.rotation(rotationUnits::deg));
-				sleep(20);
-			}
-			liftHold();				//hold lift at topmost position
-
-			sleep(2500);
-			
-			canStopLift = true;
-			return */;
-		}
-		intakeStop();
-	}
-	
 
 	void flipDown() {
 		Flipper.rotateTo(downPos, rotationUnits::deg, 100, velocityUnits::rpm);
@@ -729,25 +726,22 @@
 	}
 	
 	void park() {
-		// drives forward until parks
+		//TODO add calibration check
+		//drives forward until parks
 		//GyroPitch.startCalibration();
 		//sleep(1500);
 		canStopLift = false;
 		isAutonBase = true;
+		initGyro = GyroPitch.value(rotationUnits::deg);
 		
-		Brain.Screen.printAt(10,40, "Park initiated");
 		intake();
-		Brain.Screen.printAt(10,40, "intake initiated");
 		drive(200);
-		Brain.Screen.printAt(10,40, "drive initiated");
-		while(GyroPitch.value(rotationUnits::deg) < 12) {
+		while(abs(GyroPitch.value(rotationUnits::deg) - initGyro) < 12) {
 			sleep(20);
 		}
-		Brain.Screen.printAt(10,40, "Park crossed peak");
-		while(GyroPitch.value(rotationUnits::deg) > 2) {
+		while(abs(GyroPitch.value(rotationUnits::deg) - initGyro) > 2) {
 			sleep(20);
 		}
-		Brain.Screen.printAt(10,40, "Park complete");
 		sleep(200);
 		intakeStop();
 		stopBase();
@@ -756,6 +750,55 @@
 		isAutonBase = false;
 	}
 	
+	void placeInit() {
+		canStopLift = false;
+		isAutonBase = true;
+		
+		Brain.Screen.printAt(0,140, "cap place init");
+		
+		//intake();
+		//init cap place task
+		sleep(300);
+		while (!Controller.ButtonLeft.pressing()){
+			task::sleep(20); //wait, testing button press
+			
+		}
+		//stop cap place task
+		Brain.Screen.printAt(0,140, "cap place fin");
+		intakeStop();
+		stopBase();
+		
+		canStopLift = true;
+		isAutonBase = false;
+	}
+	
+	void placeCap() {
+		canStopLift = false;
+		isAutonBase = true;
+		
+		Brain.Screen.printAt(0,140, "cap place init");
+		 
+		//lift to top
+		liftTop();
+		
+		double initLift = Intake.rotation(rotationUnits::deg);
+		liftDown();
+		drive(90);
+		sleep(650);
+		/* lifttime = Brain.timer(timeUnits::msec);
+		while(abs(Intake.rotation(rotationUnits::deg) - initLift) < 330 && Brain.timer(timeUnits::msec) - lifttime < 2000) {
+			sleep(20);
+		} */
+		stopBase();
+		liftStop();
+		//Controller.rumble("-");
+		canStopLift = true;
+		isAutonBase = false;
+	}
+	
+	int placeCallback() {
+		return 1;
+	}
 	
 
 	///////////////////////////////////////// TASKS /////////////////////////////////////////////////////////////////
@@ -819,8 +862,8 @@
 			
 		  //COMMENT OUT DURING COMPETITION
 		  //Controller.ButtonLeft.pressed(resetCat);
-		  Controller.ButtonLeft.pressed(placeCap);
-		  Controller.ButtonRight.pressed(park);
+		  Controller.ButtonLeft.pressed(liftTop);
+		  Controller.ButtonRight.pressed(placeCap);
 		  //Controller.ButtonRight.pressed(flipReset);
 
 		  Controller.ButtonUp.pressed(foldUp);
@@ -854,7 +897,8 @@
 	task FRTask = task(FRCallback);
 	task BRTask = task(BRCallback);
 	task FLTask = task(FLCallback);
-
+	//task placeTask = task(placeCallback);
+	
 	///////////////////////////////////////// AUTONS /////////////////////////////////////////////////////////////////	
 
 
@@ -1078,7 +1122,7 @@
 		FR_Base.setStopping(brakeType::coast);
 		
 		Flipper.setStopping(brakeType::hold);
-		flipReset();
+		//flipReset();
 		
 	  while (1) {
 		// This is the main execution loop for the user control program.
@@ -1104,10 +1148,13 @@
 			  //liftSpeed(Lift*-2, true);
 			  Intake.spin(directionType::fwd, Lift, velocityUnits::pct);
 			  Intake2.spin(directionType::fwd, Lift, velocityUnits::pct);
+			  /*
+			  Intake.setStopping(brakeType::hold);
+			  Intake2.setStopping(brakeType::hold);*/
 			  canStopLift = true;
 		  } else {
 			  T = Controller.Axis1.value();
-			  if (canStopLift && (!(Controller.ButtonR2.pressing() || Controller.ButtonL2.pressing()))) {
+			  if (canStopLift) {
 				  Intake.stop();
 				  Intake2.stop();
 			  }
@@ -1118,7 +1165,7 @@
 		  BL_Base.spin(directionType::fwd,isBallMode*2*(FB + isBallMode*T - LR),velocityUnits::rpm);
 		  BR_Base.spin(directionType::rev,isBallMode*2*(FB - isBallMode*T + LR),velocityUnits::rpm); */
 
-		task::sleep(20); //Sleep the task for a short amount of time to prevent wasted resources. 
+		task::sleep(10); //Sleep the task for a short amount of time to prevent wasted resources. 
 	  }
 	}
 	//
