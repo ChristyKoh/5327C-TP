@@ -9,7 +9,7 @@ prog todo
 
 
 mechanical fixes todo
-- climbing sprocket change
+- mount vision
 - basket fixing
 - flipper reliability (wait till prog testing)
 - cap aligner

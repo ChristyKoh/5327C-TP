@@ -51,7 +51,7 @@
 
 	//flipper
 	//start position upward
-	int foldPos = 20;
+	int foldPos = 10;
 	int downPos = 240;
 	int placePos = 192;
 	int flipPos = 90;
@@ -777,7 +777,7 @@
 		isAutonBase = true;
 		
 		Brain.Screen.printAt(0,140, "cap place init");
-		 
+		
 		//lift to top
 		liftTop();
 		
@@ -785,12 +785,9 @@
 		liftDown();
 		drive(90);
 		sleep(650);
-		/* lifttime = Brain.timer(timeUnits::msec);
-		while(abs(Intake.rotation(rotationUnits::deg) - initLift) < 330 && Brain.timer(timeUnits::msec) - lifttime < 2000) {
-			sleep(20);
-		} */
 		stopBase();
-		liftStop();
+		//liftStop();
+		foldUp();
 		//Controller.rumble("-");
 		canStopLift = true;
 		isAutonBase = false;
@@ -1122,7 +1119,7 @@
 		FR_Base.setStopping(brakeType::coast);
 		
 		Flipper.setStopping(brakeType::hold);
-		//flipReset();
+		flipReset();
 		
 	  while (1) {
 		// This is the main execution loop for the user control program.
@@ -1143,20 +1140,24 @@
 		  
 		  Lift = Controller.Axis2.position(percentUnits::pct);
 		  
-		  if (abs(Lift)> 80) {
+		  if (Lift > 80) {
 			  T = 0;
-			  //liftSpeed(Lift*-2, true);
 			  Intake.spin(directionType::fwd, Lift, velocityUnits::pct);
 			  Intake2.spin(directionType::fwd, Lift, velocityUnits::pct);
-			  /*
-			  Intake.setStopping(brakeType::hold);
-			  Intake2.setStopping(brakeType::hold);*/
+			  //if(Flipper.rotation(rotationUnits::deg) != placePos) Flipper.rotateTo(placePos, rotationUnits::deg, 30, velocityUnits::rpm); //fold flipper to hold
+			  canStopLift = true;
+		  } else if (Lift < -80) {
+			  Intake.spin(directionType::fwd, Lift, velocityUnits::pct);
+			  Intake2.spin(directionType::fwd, Lift, velocityUnits::pct);
+			  //if(Flipper.rotation(rotationUnits::deg) != downPos) Flipper.rotateTo(downPos, rotationUnits::deg, 30, velocityUnits::rpm); //fold flipper to hold
 			  canStopLift = true;
 		  } else {
 			  T = Controller.Axis1.value();
 			  if (canStopLift) {
-				  Intake.stop();
-				  Intake2.stop();
+				  Intake.setVelocity(10, velocityUnits::rpm);
+				  Intake2.setVelocity(10, velocityUnits::rpm); //set hold velocity
+				  Intake.stop(brakeType::hold);					// hold lift
+				  Intake2.stop(brakeType::hold);
 			  }
 		  }
 		  
