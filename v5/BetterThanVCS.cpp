@@ -28,6 +28,7 @@
 	bool isAutonBase = false;
 	bool isCatapultReady = false;
 	bool isCatapultPriming = false;
+	bool isPlaceReady = false;
 	bool canPew = false;
 	bool isCollectorPriming = false;
 	bool isCollectorReady = false;
@@ -50,10 +51,12 @@
 	//lift
 
 	//flipper
+	int currPos = 0;
+	
 	//start position upward
 	int foldPos = 10;
-	int downPos = 240;
-	int placePos = 192;
+	int downPos = 253;
+	int placePos = 200;//192;
 	int flipPos = 90;
 	float torqueLimit = 1.0;
 
@@ -86,8 +89,9 @@
 			} else {
 				Brain.Screen.printAt(10,40,"Mode: Cap Mode %b", isBallMode);
 			}
-			LED.state(100,percentUnits::pct);
-			areLEDsOn = true;
+			toggleLEDs(); //on when capping, off when balling
+			//LED.state(100,percentUnits::pct);
+			//areLEDsOn = true;
 			modetime = Brain.timer(timeUnits::msec);
 			//Brain.resetTimer();
 		}
@@ -131,12 +135,14 @@
 
 	void liftDown() {
 		canStopLift = false;
+		isPlaceReady = false;
 		Intake.spin(directionType::rev, 200, velocityUnits::rpm);
 		Intake2.spin(directionType::rev, 200, velocityUnits::rpm);
 	}
 	
 	void liftSpeed(int s, bool stopLift=false) {
 		canStopLift = stopLift;
+		isPlaceReady = false;
 		Intake.spin(directionType::fwd, s, velocityUnits::rpm);
 		Intake2.spin(directionType::fwd, s, velocityUnits::rpm);
 	}
@@ -149,10 +155,16 @@
 	void liftHold() {
 		Intake.stop(brakeType::hold);
 		Intake2.stop(brakeType::hold);
+		Intake.setVelocity(50, velocityUnits::rpm);
+		Intake2.setVelocity(50, velocityUnits::rpm);
 		canStopLift = false;
 	}
 	
-	void liftTop() {
+	void liftTop(bool goPlacePos = true) {
+		if (goPlacePos) {
+			Flipper.startRotateTo(placePos, rotationUnits::deg, 100, velocityUnits::rpm);
+			currPos = placePos;
+		}
 		liftUp();
 		double initLift = Intake.rotation(rotationUnits::deg);
 		sleep(200);
@@ -162,9 +174,29 @@
 			initLift = Intake.rotation(rotationUnits::deg);
 			sleep(20);
 		}
-		// Controller.rumble("-");
 		liftSpeed(50);
 		liftHold();				//hold lift at topmost position
+		isPlaceReady = true;
+	}
+	
+	void liftBottom(bool goDownPos = false) {
+		if (goDownPos) {
+			Flipper.startRotateTo(downPos, rotationUnits::deg, 100, velocityUnits::rpm);
+			currPos = downPos;
+		}
+		liftDown();
+		double initLift = Intake.rotation(rotationUnits::deg);
+		sleep(200);
+		lifttime = Brain.timer(timeUnits::msec);
+		while (abs(Intake.rotation(rotationUnits::deg) - initLift) > 0 && Brain.timer(timeUnits::msec) - lifttime < 5000) {
+			//Brain.Screen.printAt(0,140,"initFlip is %d", initFlip - (int)Flipper.rotation(rotationUnits::deg));
+			initLift = Intake.rotation(rotationUnits::deg);
+			sleep(20);
+		}
+		liftSpeed(-50);
+		liftHold();				//hold lift at topmost position
+		Controller.rumble("-");
+		isPlaceReady = false;
 	}
 
 	void catgo() {
@@ -176,17 +208,16 @@
 	}
 
 	void foldUp() {
-		//Flipper.spin(directionType::fwd, 200, velocityUnits::rpm);
-		//Brain.Screen.printAt(10,40,"Flipper running at 200rpm");
-		liftSpeed(-200);
-		torquetime = Brain.timer(timeUnits::msec);
-		while (Intake.torque(torqueUnits::Nm) < .35 || (Brain.timer(timeUnits::msec) - torquetime) > 2000) {
-			//Brain.Screen.printAt(0,180,"Torque is %0.1f", Intake.torque(torqueUnits::Nm));
+		liftSpeed(-100);
+		double initLift = Intake.rotation(rotationUnits::deg);
+		sleep(200);
+		while (abs(Intake.rotation(rotationUnits::deg) - initLift) > 0) {
+			initLift = Intake.rotation(rotationUnits::deg);
 			sleep(20);
 		}
-		sleep(400);
-		liftHold();
-		Flipper.rotateTo(foldPos, rotationUnits::deg, 100, velocityUnits::rpm);
+		Controller.rumble("-");
+		liftHold();				//hold lift at bottommost position
+		Flipper.startRotateTo(foldPos, rotationUnits::deg, 100, velocityUnits::rpm);
 		liftStop();
 	}
 	
@@ -197,7 +228,6 @@
 		double initLift = Intake.rotation(rotationUnits::deg);
 		sleep(200);
 		while (abs(Intake.rotation(rotationUnits::deg) - initLift) > 0) {
-			//Brain.Screen.printAt(0,140,"initFlip is %d", initFlip - (int)Flipper.rotation(rotationUnits::deg));
 			initLift = Intake.rotation(rotationUnits::deg);
 			sleep(20);
 		}
@@ -218,21 +248,28 @@
 		Controller.rumble("-");
 		liftStop(); // stop hold, allow reg control of lift
 		
-		Flipper.rotateTo(foldPos, rotationUnits::deg, 5, velocityUnits::rpm);
+		Flipper.startRotateTo(foldPos, rotationUnits::deg, 5, velocityUnits::rpm);
+		currPos = foldPos;
 	}
 
 	void flipDown() {
-		Flipper.rotateTo(downPos, rotationUnits::deg, 100, velocityUnits::rpm);
+		Flipper.startRotateTo(downPos, rotationUnits::deg, 100, velocityUnits::rpm);
+		currPos = downPos;
 	}
 
 	void flipStop() {
 		Flipper.stop(brakeType::hold);
 	}
 
-	void flipOne() {
-		Flipper.rotateTo(flipPos, rotationUnits::deg, 100, velocityUnits::rpm);
-		//sleep(100);
-		Flipper.rotateTo(placePos, rotationUnits::deg, 100, velocityUnits::rpm);
+	void flipOne() { //flip, then hold in placing pos
+		//Flipper.startRotateTo(flipPos, rotationUnits::deg, 100, velocityUnits::rpm);
+		Flipper.startRotateFor(-90, rotationUnits::deg, 100, velocityUnits::rpm);
+		sleep(500);
+		// Flipper.startRotateTo(placePos, rotationUnits::deg, 100, velocityUnits::rpm);
+		Flipper.startRotateTo(downPos, rotationUnits::deg, 100, velocityUnits::rpm);
+		sleep(300);
+		Flipper.startRotateTo(placePos, rotationUnits::deg, 100, velocityUnits::rpm);
+		currPos = placePos;
 	}
 
 	void resetBaseEnc() {
@@ -781,20 +818,27 @@
 		//lift to top
 		liftTop();
 		
-		double initLift = Intake.rotation(rotationUnits::deg);
+		//liftSpeed(-100);
 		liftDown();
 		drive(90);
-		sleep(650);
+		sleep(1000);
 		stopBase();
 		//liftStop();
 		foldUp();
 		//Controller.rumble("-");
+		currPos = foldPos;
 		canStopLift = true;
 		isAutonBase = false;
 	}
 	
-	int placeCallback() {
-		return 1;
+	void cap() { //called to toggle between ready states
+		if (isPlaceReady) {
+			placeCap();
+			isPlaceReady = false;
+		} else {
+			liftTop();
+			isPlaceReady = true;
+		}
 	}
 	
 
@@ -854,13 +898,13 @@
 		  
 		  //Controller.ButtonRight.pressed(toggleLEDs);
 			
-		  //Controller.ButtonRight.pressed(toggleMode);
+		  Controller.ButtonRight.pressed(cap);
 		  //Controller.ButtonRight.released(delayLEDsOff);
 			
 		  //COMMENT OUT DURING COMPETITION
 		  //Controller.ButtonLeft.pressed(resetCat);
-		  Controller.ButtonLeft.pressed(liftTop);
-		  Controller.ButtonRight.pressed(placeCap);
+		  Controller.ButtonLeft.pressed(toggleMode);
+		  //Controller.ButtonRight.pressed(placeCap);
 		  //Controller.ButtonRight.pressed(flipReset);
 
 		  Controller.ButtonUp.pressed(foldUp);
@@ -894,16 +938,8 @@
 	task FRTask = task(FRCallback);
 	task BRTask = task(BRCallback);
 	task FLTask = task(FLCallback);
-	//task placeTask = task(placeCallback);
 	
 	///////////////////////////////////////// AUTONS /////////////////////////////////////////////////////////////////	
-
-
-	
-	
-	void parkmatch() {
-		
-	}
 
 	void fetch() {
 		//nabs bol
@@ -931,6 +967,44 @@
 		torqueLimit = 1.0;
 		sleep(300);
 		//intake(); 					//continue intaking balls
+	}
+	
+	void backCap(int side) {
+		intake();
+		driveFor(33);				//intake ball
+		driveFor(-12, 200, 1);
+		sleep(200);
+		flipDown();
+		rotForGyro(side * 135);		//face cap
+		intakeStop();
+		liftBottom();
+		driveFor(-17, 200, 1);		//under cap
+		//Flipper.startRotateTo(placePos, rotationUnits::deg);
+		//sleep(200);
+		
+		liftTop();
+		sleep(300);
+		flipOne();
+		Flipper.startRotateTo(120, rotationUnits::deg);
+		//sleep(500);
+		driveFor(5);
+		rotForGyro(-73,3);			//turn to pole
+		sleep(200);
+		Flipper.startRotateTo(downPos, rotationUnits::deg);
+		sleep(300);
+		Flipper.startRotateTo(placePos, rotationUnits::deg);
+		
+		driveFor(-18); 				//drive to pole
+		drive(-50);
+		sleep(200);
+		stopBase();
+		placeCap();					//place cap
+		strafe(side * -5);
+		rotForGyro(side * 30);
+		drive(100);
+		sleep(400);
+		intake();
+		park();
 	}
 
 	void anticross(int side=RIGHT){
@@ -1074,7 +1148,11 @@
 		Brain.Screen.print("Robot is in Autonomous mode");
         //placeCap();
 		//oleReliable(RIGHT);
-        backPark(LEFT);
+        
+		
+		
+		backCap(RIGHT);
+		//backPark(LEFT);
         //anticross(LEFT);
 		//intakeSpeed(100);
 		//park();
@@ -1142,15 +1220,18 @@
 		  
 		  if (Lift > 80) {
 			  T = 0;
-			  Intake.spin(directionType::fwd, Lift, velocityUnits::pct);
-			  Intake2.spin(directionType::fwd, Lift, velocityUnits::pct);
-			  //if(Flipper.rotation(rotationUnits::deg) != placePos) Flipper.rotateTo(placePos, rotationUnits::deg, 30, velocityUnits::rpm); //fold flipper to hold
+			  Intake.spin(directionType::fwd, 150, velocityUnits::rpm);
+			  Intake2.spin(directionType::fwd, 150, velocityUnits::rpm);
+			  if(Flipper.rotation(rotationUnits::deg) != placePos) Flipper.startRotateTo(placePos, rotationUnits::deg, 30, velocityUnits::rpm); //fold flipper to hold
+			  //Flipper.startRotateTo(placePos, rotationUnits::deg, 30, velocityUnits::rpm); //fold flipper to hold
 			  canStopLift = true;
 		  } else if (Lift < -80) {
-			  Intake.spin(directionType::fwd, Lift, velocityUnits::pct);
-			  Intake2.spin(directionType::fwd, Lift, velocityUnits::pct);
-			  //if(Flipper.rotation(rotationUnits::deg) != downPos) Flipper.rotateTo(downPos, rotationUnits::deg, 30, velocityUnits::rpm); //fold flipper to hold
+			  Intake.spin(directionType::fwd, -150, velocityUnits::rpm);
+			  Intake2.spin(directionType::fwd, -150, velocityUnits::rpm);
+			  if(Flipper.rotation(rotationUnits::deg) != downPos) Flipper.startRotateTo(downPos, rotationUnits::deg, 30, velocityUnits::rpm); //fold flipper to hold
+			  //Flipper.startRotateTo(downPos, rotationUnits::deg, 30, velocityUnits::rpm); //fold flipper to down
 			  canStopLift = true;
+			  isPlaceReady = false;
 		  } else {
 			  T = Controller.Axis1.value();
 			  if (canStopLift) {
