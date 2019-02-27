@@ -270,7 +270,7 @@
 		sleep(500);
 		Flipper.startRotateTo(downPos, rotationUnits::deg, 100, velocityUnits::rpm);
 		sleep(300);
-		Flipper.startRotateTo(placePos, rotationUnits::deg, 10, velocityUnits::rpm);
+		Flipper.startRotateTo(placePos, rotationUnits::deg, 50, velocityUnits::rpm);
 		currPos = placePos;
 	}
 
@@ -468,7 +468,7 @@
 				task::sleep(6);
 			}
 		} else {
-			Brain.Screen.printAt(0,180,"Negative");
+			//Brain.Screen.printAt(0,180,"Negative");
 			for(int c=0; c<40; c++) {
 				driveLR(c*aStep+aSign*30, c*aStep);
 				task::sleep(6);
@@ -663,17 +663,21 @@
 		//Brain.Screen.printAt(10,40, "Catapult Running");
 		sleep(400);
 		if(CatBumper.value() == 0) {
+		//Brain.Screen.printAt(10,40, "Button was pressed");
 		//if button is pressed immedately, catapult is already lowered
 			//firing at a lower speed
 			Catapult.spin(directionType::fwd, 10, velocityUnits::rpm);
 			while(CatBumper.value() == 0 && Brain.timer(timeUnits::msec)-catprimetime < 800){
-				sleep(2);
+				task::sleep(2);
 			}
-			Catapult.stop();
-			sleep(300);
+			Catapult.rotateTo(Catapult.rotation(rotationUnits::deg)-20, rotationUnits::deg);
+			sleep(200);
 			Catapult.spin(directionType::fwd, 200, velocityUnits::rpm);
 			
-		}//if not, catapult will simply prime
+		} //if not, catapult will simply prime 
+		else {
+			Brain.Screen.printAt(10,40, "Button not pressed");
+		}
 		//sleep(400);
 		catprimetime = Brain.timer(timeUnits::msec);
 		while(CatBumper.value() == 1 && Brain.timer(timeUnits::msec)-catprimetime < 2000){
@@ -821,7 +825,7 @@
 		
 		//liftSpeed(-100);
 		liftDown();
-		drive(90);
+		drive(120);
 		sleep(1000);
 		stopBase();
 		//liftStop();
@@ -985,21 +989,20 @@
 	}	
  
 	void fetchFlip2(int dist, bool plsPrimeCatapult=true) {
-		//smackFromButton(130);		//MAKE SIMULTANEOUS
+		intakeSpeed(300);
 		thread smackDown(smakDownThread);	//start thread before driving
-		driveFor(dist);	
+		sleep(500);
+		driveFor(dist, 60, 0.6);	
+		driveFor(-10, 200, 0.8);	// CAN PROBABLY LOWER //drive back before lowering
 		intake();
-		
-		driveFor(-12, 200, 0.8);	// CAN PROBABLY LOWER //drive back before lowering
 		isCollectorReady=false;
 		torqueLimit = 1.5;			//global torque var increase to allow smak to run
 		smak(); 					//lower collector
-		sleep(300);
-		driveFor(12);
+		driveFor(8, 200, 0.8);
 		if(plsPrimeCatapult)pew(); 	//flip cap and lower cat
 		else smak(); 				//just flip cap
 		torqueLimit = 1.0;
-		sleep(300);
+		sleep(300); 
 	}
 	
 	void backCap(int side) {
@@ -1121,9 +1124,10 @@
 	void wannabeReliable(int side=RIGHT) {
 		intake();
 		driveFor(33, 200, .8);
-		driveFor(-39, 200, 1);
-		
-		rotForGyro(82);			//rotForGyro(84);
+		driveFor(-37, 200, 1);
+		sleep(200);
+		rotForGyro(82, 3);			//rotForGyro(84);
+		sleep(200);
 		pew();					//toggle near column
 		
 		intakeStop();
@@ -1132,17 +1136,16 @@
 		driveFor(49, 200, .8);	//toggle bottom flag
 		driveFor(-21, 200, 1);
 		rotFor(side * -43);
-		strafeFor(-20);			//strafe to cap
-		intakeSpeed(100);
-		driveFor(3,50,0.7); 	//slow drive nom cap
-		fetchFlip(false);		// get balls, flip cap
-		strafeFor(-3);			//go more center to hit toggled center flags
-		driveFor(6);			//position to shoot
-		intakeStop(); 
-		while (Brain.timer(timeUnits::msec) < 14000) {
+		strafeFor(side * -19);		//strafe to cap
+		//driveFor(3,50,0.7); 		//slow drive nom cap
+		fetchFlip2(5);		// get balls, flip cap
+		strafeFor(side * -3);		//go more center to hit toggled center flags
+		driveFor(6);				//position to shoot
+		intakeStop();
+		while (Brain.timer(timeUnits::msec) < 14500) {
 			task::sleep(5);
 		}
-		pew(); //launch only after 14 second mark
+		pew(); //launch only after 14.5 second mark
 	}
 
 	void testing(motor *m, int vel) {
@@ -1202,14 +1205,15 @@
 		Brain.resetTimer();
         //sleep(1500);
 		
+		//Catapult.rotateTo(Catapult.rotation(rotationUnits::deg)-20, rotationUnits::deg);
 		//driveThread_distance = 10;
 		//driveThread_max = 200;
 		//driveThread_kP = 0.5;
 		//thread d(driveThread);
-		fetchFlip2(3);
+		//fetchFlip2(5, false);
 		//sleep(10000);
 		//oleReliable(RIGHT);
-        //wannabeReliable();
+        wannabeReliable();
 		
 		//backCap(RIGHT);
 		//backPark(LEFT);
