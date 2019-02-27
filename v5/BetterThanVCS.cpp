@@ -24,41 +24,45 @@
 
 	/////////////////////////////////////// VARIABLES /////////////////////////////////////////////////////////////
 
-	//mode
-	bool isAutonBase = false;
-	bool isCatapultReady = false;
-	bool isCatapultPriming = false;
-	bool isPlaceReady = false;
-	bool canPew = false;
-	bool isCollectorPriming = false;
-	bool isCollectorReady = false;
-	bool canSmak = false;
-	bool isBraking = false;
-	bool canStopLift = true;
+	//status
+	int isBallMode = 1; //ball mode 1, cap mode -1
 	bool amIBlue = true;
 	bool areLEDsOn = false;
-	int isBallMode = 1; //ball mode
 
 	//sensor
 	int BaseR, BaseL, BaseF, BaseB, avgBaseFwd, avgBaseRot;
-
+	
 	//base
-	int thresh = 10;
+	bool isAutonBase = false;
+	bool isBraking = false;
 	int FB, LR, T, Lift;
 	int FL, FR, BL, BR;
 	float initGyro;
 	
+	//catapult
+	bool isCatapultReady = false;
+	bool isCatapultPriming = false;
+	bool canPew = false;
+	bool isCollectorPriming = false;
+	bool isCollectorReady = false;
+	bool canSmak = false;
+	
 	//lift
-
+	bool isPlaceReady = false;
+	bool canStopLift = true;
+	
 	//flipper
 	int currPos = 0;
-	
-	//start position upward
 	int foldPos = 10;
 	int downPos = 253;
 	int placePos = 200;//192;
 	int flipPos = 90;
 	float torqueLimit = 1.0;
+	
+	//autonomous
+	int driveThread_distance;
+	int driveThread_max = 200;
+	int driveThread_kP = 0.5;
 
 	//timers
 	double ledtime, modetime, drivetime, catprimetime, colprimetime, torquetime, lifttime;
@@ -217,7 +221,7 @@
 		}
 		Controller.rumble("-");
 		liftHold();				//hold lift at bottommost position
-		Flipper.startRotateTo(foldPos, rotationUnits::deg, 100, velocityUnits::rpm);
+		Flipper.startRotateTo(foldPos, rotationUnits::deg, 30, velocityUnits::rpm);
 		liftStop();
 	}
 	
@@ -253,7 +257,7 @@
 	}
 
 	void flipDown() {
-		Flipper.startRotateTo(downPos, rotationUnits::deg, 100, velocityUnits::rpm);
+		Flipper.startRotateTo(downPos, rotationUnits::deg, 50, velocityUnits::rpm);
 		currPos = downPos;
 	}
 
@@ -262,13 +266,11 @@
 	}
 
 	void flipOne() { //flip, then hold in placing pos
-		//Flipper.startRotateTo(flipPos, rotationUnits::deg, 100, velocityUnits::rpm);
 		Flipper.startRotateFor(-90, rotationUnits::deg, 100, velocityUnits::rpm);
 		sleep(500);
-		// Flipper.startRotateTo(placePos, rotationUnits::deg, 100, velocityUnits::rpm);
 		Flipper.startRotateTo(downPos, rotationUnits::deg, 100, velocityUnits::rpm);
 		sleep(300);
-		Flipper.startRotateTo(placePos, rotationUnits::deg, 100, velocityUnits::rpm);
+		Flipper.startRotateTo(placePos, rotationUnits::deg, 10, velocityUnits::rpm);
 		currPos = placePos;
 	}
 
@@ -444,7 +446,7 @@
 	int derr, power, goal, aSign, aStep, initRot, rotDiff;
 	double kPr;
 
-	void driveFor(int dist, int max=200, double kP=0.5, bool noStop=false, bool keepRot=true) {
+	void driveFor(int dist, int max=200, double kP=0.5, bool noStop=false, bool keepRot=false) {
 		// diameter 2.75 in, radius 1.375 in
 		// inches to degrees
 		resetBaseEnc();
@@ -793,7 +795,6 @@
 		
 		Brain.Screen.printAt(0,140, "cap place init");
 		
-		//intake();
 		//init cap place task
 		sleep(300);
 		while (!Controller.ButtonLeft.pressing()){
@@ -840,7 +841,6 @@
 			isPlaceReady = true;
 		}
 	}
-	
 
 	///////////////////////////////////////// TASKS /////////////////////////////////////////////////////////////////
 
@@ -850,7 +850,6 @@
 			// Controller.ButtonL1.pressed(smack);
 			if(isBallMode && canPew) trebuchet();
 			if(canSmak) smack();
-			//Brain.Screen.printAt(10,150,"Launch Callback Running...");
 			task::sleep(40);
 		}
 		return 1;
@@ -941,24 +940,40 @@
 	
 	///////////////////////////////////////// AUTONS /////////////////////////////////////////////////////////////////	
 
+	//AUTON TASKS
+	int smakDownThread() {
+		Catapult.spin(directionType::rev, 100, velocityUnits::rpm); //lower smack
+		
+		colprimetime = Brain.timer(timeUnits::msec);
+		while(TopColBumper.value() == 0 && Brain.timer(timeUnits::msec)-colprimetime < 2000){
+			this_thread::sleep_for(10);
+		}
+		Catapult.stop();
+		Catapult.rotateFor(-390, rotationUnits::deg, 200, velocityUnits::rpm); //lower smack 90deg
+		
+		return 1;
+	}
+	
+	int driveThread() {
+		driveFor(driveThread_distance, driveThread_max, driveThread_kP);
+		return 1;
+	}
+		
 	void fetch() {
 		//nabs bol
 		intake();
 		driveFor(33);
-		//sleep(500);
 		driveFor(-39);
-		//driveFor(-32,200,0.5,false, false);
-		//intakeStop();
 	}
 
 	void fetchFlip(bool plsPrimeCatapult=true) {		
-		smackFromButton(130);
+		smackFromButton(130);		//MAKE SIMULTANEOUS
 		intake();
 		
-		driveFor(-12, 200, 0.8);				//drive back before lowering
+		driveFor(-12, 200, 0.8);	// CAN PROBABLY LOWER //drive back before lowering
 		//intakeStop();				//balls often not fully intaken
 		isCollectorReady=false;
-		torqueLimit = 1.5;
+		torqueLimit = 1.5;			//global torque var increase to allow smak to run
 		smak(); 					//lower collector
 		sleep(300);
 		driveFor(12);
@@ -967,6 +982,24 @@
 		torqueLimit = 1.0;
 		sleep(300);
 		//intake(); 					//continue intaking balls
+	}	
+ 
+	void fetchFlip2(int dist, bool plsPrimeCatapult=true) {
+		//smackFromButton(130);		//MAKE SIMULTANEOUS
+		thread smackDown(smakDownThread);	//start thread before driving
+		driveFor(dist);	
+		intake();
+		
+		driveFor(-12, 200, 0.8);	// CAN PROBABLY LOWER //drive back before lowering
+		isCollectorReady=false;
+		torqueLimit = 1.5;			//global torque var increase to allow smak to run
+		smak(); 					//lower collector
+		sleep(300);
+		driveFor(12);
+		if(plsPrimeCatapult)pew(); 	//flip cap and lower cat
+		else smak(); 				//just flip cap
+		torqueLimit = 1.0;
+		sleep(300);
 	}
 	
 	void backCap(int side) {
@@ -1058,38 +1091,58 @@
 	void oleReliable(int side=RIGHT) {
 		fetch();
 		if(side == LEFT) rotForGyro(-86); 		// face flags
-		else rotForGyro(83);
-		//driveFor(-3);
-		sleep(400);
+		else rotForGyro(80);//rotForGyro(84);
 		
-		Catapult.spin(directionType::fwd, 200, velocityUnits::rpm);
-		sleep(500);
-		Catapult.stop();
+		pew();
 		
 		intakeStop();
-		sleep(400);
+		sleep(200);
 		if(side == LEFT) {
 			rotForGyro(side * 9);
 			driveFor(40, 200, 0.8);			// toggle bottom flag
 			driveFor(-26);
 		}
 		else {
-			rotForGyro(side * 8);
-			driveFor(44, 200, 0.8);
+			rotForGyro(side * 7);
+			driveFor(49, 200, 0.8);
 			driveFor(-21);
 		}
 		rotFor(side * -43);
 		if(side == LEFT)strafeFor(side*-15); 	// strafe to cap
-		else strafeFor(-17);
+		else strafeFor(-20);
 		intakeSpeed(100);
-		driveFor(2,50,0.7); 	//slow drive nom cap
-		fetchFlip();			// get balls, flip cap*/
+		driveFor(3,50,0.7); 	//slow drive nom cap
+		fetchFlip(false);			// get balls, flip cap*/
 		driveFor(-6);
 		sleep(1500);
-		//strafeFor(side*-10);
-		//sleep(1500);
-		//pew();
 		intakeStop();
+	}
+	
+	void wannabeReliable(int side=RIGHT) {
+		intake();
+		driveFor(33, 200, .8);
+		driveFor(-39, 200, 1);
+		
+		rotForGyro(82);			//rotForGyro(84);
+		pew();					//toggle near column
+		
+		intakeStop();
+		sleep(400);
+		rotForGyro(side * 6);
+		driveFor(49, 200, .8);	//toggle bottom flag
+		driveFor(-21, 200, 1);
+		rotFor(side * -43);
+		strafeFor(-20);			//strafe to cap
+		intakeSpeed(100);
+		driveFor(3,50,0.7); 	//slow drive nom cap
+		fetchFlip(false);		// get balls, flip cap
+		strafeFor(-3);			//go more center to hit toggled center flags
+		driveFor(6);			//position to shoot
+		intakeStop(); 
+		while (Brain.timer(timeUnits::msec) < 14000) {
+			task::sleep(5);
+		}
+		pew(); //launch only after 14 second mark
 	}
 
 	void testing(motor *m, int vel) {
@@ -1146,27 +1199,25 @@
 
 	void autonomous( void ) {
 		Brain.Screen.print("Robot is in Autonomous mode");
-        //placeCap();
+		Brain.resetTimer();
+        //sleep(1500);
+		
+		//driveThread_distance = 10;
+		//driveThread_max = 200;
+		//driveThread_kP = 0.5;
+		//thread d(driveThread);
+		fetchFlip2(3);
+		//sleep(10000);
 		//oleReliable(RIGHT);
-        
+        //wannabeReliable();
 		
-		
-		backCap(RIGHT);
+		//backCap(RIGHT);
 		//backPark(LEFT);
-        //anticross(LEFT);
-		//intakeSpeed(100);
-		//park();
-		//fetchFlip(true);
-		//driveFor(-32);
+        
 		//testing(&Catapult, 200);
 		//sleep(100);
 		//Catapult.stop();
 		
-		sleep(500);
-		BL_Base.setStopping(brakeType::coast);
-		BR_Base.setStopping(brakeType::coast);
-		FL_Base.setStopping(brakeType::coast);
-		FR_Base.setStopping(brakeType::coast);
 	}
 
 	/*---------------------------------------------------------------------------*/

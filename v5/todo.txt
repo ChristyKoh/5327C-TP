@@ -1,8 +1,5 @@
 prog todo
 - vision aiming
-- odom testing
-	- compare indiv rots vs average
-	- strafing jerk stuff
 - cap place macro
 - autonnnnz
 - prog skilllllllz
