@@ -195,11 +195,11 @@
 		while (abs(Intake.rotation(rotationUnits::deg) - initLift) > 0 && Brain.timer(timeUnits::msec) - lifttime < 5000) {
 			//Brain.Screen.printAt(0,140,"initFlip is %d", initFlip - (int)Flipper.rotation(rotationUnits::deg));
 			initLift = Intake.rotation(rotationUnits::deg);
-			sleep(20);
+			sleep(5);
 		}
-		liftSpeed(-50);
+		liftSpeed(-20);
 		liftHold();				//hold lift at topmost position
-		Controller.rumble("-");
+		//Controller.rumble("-");
 		isPlaceReady = false;
 	}
 
@@ -991,8 +991,9 @@
 	void fetchFlip2(int dist, bool plsPrimeCatapult=true) {
 		intakeSpeed(300);
 		thread smackDown(smakDownThread);	//start thread before driving
-		sleep(500);
-		driveFor(dist, 60, 0.6);	
+		sleep(300);
+		driveFor(dist, 60, 0.6);
+		sleep(100);		
 		driveFor(-10, 200, 0.8);	// CAN PROBABLY LOWER //drive back before lowering
 		intake();
 		isCollectorReady=false;
@@ -1021,8 +1022,7 @@
 		liftTop();
 		sleep(300);
 		flipOne();
-		Flipper.startRotateTo(120, rotationUnits::deg);
-		//sleep(500);
+		//Flipper.startRotateTo(110, rotationUnits::deg);		//hold up
 		driveFor(5);
 		rotForGyro(-73,3);			//turn to pole
 		sleep(200);
@@ -1030,17 +1030,19 @@
 		sleep(300);
 		Flipper.startRotateTo(placePos, rotationUnits::deg);
 		
-		driveFor(-18); 				//drive to pole
+		driveFor(-16); 				//drive to pole
 		drive(-50);
 		sleep(200);
 		stopBase();
 		placeCap();					//place cap
-		strafe(side * -5);
 		rotForGyro(side * 30);
-		drive(100);
-		sleep(400);
-		intake();
-		park();
+		strafe(side * -5);
+		driveFor(5,100,0.8);
+		//drive(100);
+		//sleep(400);
+		
+		// intake();				//park
+		// park();
 	}
 
 	void anticross(int side=RIGHT){
@@ -1121,10 +1123,10 @@
 		intakeStop();
 	}
 	
-	void wannabeReliable(int side=RIGHT) {
+	void wannabeReliableRight() {
 		intake();
-		driveFor(33, 200, .7);
-		driveFor(-37, 200, .5);
+		driveFor(35, 200, .7);
+		driveFor(-39, 200, .5);
 		sleep(200);
 		rotForGyro(84, 4);			//rotForGyro(84);
 		sleep(200);
@@ -1132,21 +1134,54 @@
 		
 		intakeStop();
 		sleep(400);
-		rotForGyro(side * 6);
+		rotForGyro(6);
 		driveFor(49, 200, .8);	//toggle bottom flag
-		driveFor(-21, 200, 1);
-		//rotFor(side * -43);
-		rotTo(side * -45);
-		strafeFor(side * -19);		//strafe to cap
+		driveFor(-20, 200, 1);
+		//rotFor(-43);
+		rotTo(45);
+		strafeFor(-19);		//strafe to cap
 		//driveFor(3,50,0.7); 		//slow drive nom cap
 		fetchFlip2(5,false);		// get balls, flip cap
-		strafeFor(side * -3);		//go more center to hit toggled center flags
+		strafeFor(-6);		//go more center to hit toggled center flags
 		driveFor(6);				//position to shoot
-		intakeStop();
-		while (Brain.timer(timeUnits::msec) < 14500) {
+		rotTo(45);
+		while (Brain.timer(timeUnits::msec) < 14200) {
 			task::sleep(5);
 		}
+		intakeStop();
 		pew(); //launch only after 14.5 second mark
+	}
+	
+	void wannabeReliableLeft() {
+		intake();
+		driveFor(35, 200, .7);
+		driveFor(-42, 200, .5);
+		sleep(200);
+		rotForGyro(-84, 4);			//rotForGyro(84);
+		sleep(200);
+		pew();					//toggle near column
+		
+		intakeStop();
+		sleep(400);
+		rotForGyro(-4);
+		driveFor(46, 200, .8);	//toggle bottom flag
+		driveFor(-19, 200, 1);
+		//rotFor(-43);
+		rotTo(-45);
+		strafeFor(17);		//strafe to cap
+		fetchFlip2(5,false);		// get balls, flip cap
+		strafeFor(4);		//go more center to hit toggled center flags
+		driveFor(6);				//position to shoot
+		//rotTo(-42);
+		while (Brain.timer(timeUnits::msec) < 14200) {
+			task::sleep(5);
+		}
+		intakeStop();
+		pew(); //launch only after 14.5 second mark
+	}
+	
+	void progskills() {
+		
 	}
 
 	void testing(motor *m, int vel) {
@@ -1206,19 +1241,15 @@
 		Brain.resetTimer();
         //sleep(1500);
 		
-		//Catapult.rotateTo(Catapult.rotation(rotationUnits::deg)-20, rotationUnits::deg);
-		//driveThread_distance = 10;
-		//driveThread_max = 200;
-		//driveThread_kP = 0.5;
-		//thread d(driveThread);
 		//fetchFlip2(5, false);
 		//sleep(10000);
 		//oleReliable(RIGHT);
-        wannabeReliable();
+        //wannabeReliable();
 		
 		//backCap(RIGHT);
-		//backPark(LEFT);
-        
+		//backPark(RIGHT);
+        wannabeReliableLeft();
+		//park();
 		//testing(&Catapult, 200);
 		//sleep(100);
 		//Catapult.stop();
