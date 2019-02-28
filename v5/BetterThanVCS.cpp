@@ -667,11 +667,11 @@
 		//if button is pressed immedately, catapult is already lowered
 			//firing at a lower speed
 			Catapult.spin(directionType::fwd, 10, velocityUnits::rpm);
-			while(CatBumper.value() == 0 && Brain.timer(timeUnits::msec)-catprimetime < 800){
+			while(CatBumper.value() == 0 && Brain.timer(timeUnits::msec)-catprimetime < 500){
 				task::sleep(2);
 			}
-			Catapult.rotateTo(Catapult.rotation(rotationUnits::deg)-20, rotationUnits::deg);
-			sleep(200);
+			Catapult.rotateTo(Catapult.rotation(rotationUnits::deg)-20, rotationUnits::deg, 200, velocityUnits::rpm);
+			sleep(300);
 			Catapult.spin(directionType::fwd, 200, velocityUnits::rpm);
 			
 		} //if not, catapult will simply prime 
@@ -825,7 +825,7 @@
 		
 		//liftSpeed(-100);
 		liftDown();
-		drive(120);
+		drive(90);
 		sleep(1000);
 		stopBase();
 		//liftStop();
@@ -1123,10 +1123,10 @@
 	
 	void wannabeReliable(int side=RIGHT) {
 		intake();
-		driveFor(33, 200, .8);
-		driveFor(-37, 200, 1);
+		driveFor(33, 200, .7);
+		driveFor(-37, 200, .5);
 		sleep(200);
-		rotForGyro(82, 3);			//rotForGyro(84);
+		rotForGyro(84, 4);			//rotForGyro(84);
 		sleep(200);
 		pew();					//toggle near column
 		
@@ -1135,10 +1135,11 @@
 		rotForGyro(side * 6);
 		driveFor(49, 200, .8);	//toggle bottom flag
 		driveFor(-21, 200, 1);
-		rotFor(side * -43);
+		//rotFor(side * -43);
+		rotTo(side * -45);
 		strafeFor(side * -19);		//strafe to cap
 		//driveFor(3,50,0.7); 		//slow drive nom cap
-		fetchFlip2(5);		// get balls, flip cap
+		fetchFlip2(5,false);		// get balls, flip cap
 		strafeFor(side * -3);		//go more center to hit toggled center flags
 		driveFor(6);				//position to shoot
 		intakeStop();
@@ -1182,7 +1183,7 @@
 		areLEDsOn = false;
 		
 		
-		Flipper.setStopping(brakeType::hold);
+		Flipper.setStopping(brakeType::coast);
 		
 		BL_Base.setStopping(brakeType::hold);
 		BR_Base.setStopping(brakeType::hold);
