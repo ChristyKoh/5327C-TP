@@ -1125,8 +1125,8 @@
 	
 	void wannabeReliableRight() {
 		intake();
-		driveFor(35, 200, .7);
-		driveFor(-39, 200, .5);
+		driveFor(37, 200, .7);
+		driveFor(-41, 200, .5);
 		sleep(200);
 		rotForGyro(84, 4);			//rotForGyro(84);
 		sleep(200);
@@ -1154,8 +1154,9 @@
 	
 	void wannabeReliableLeft() {
 		intake();
-		driveFor(35, 200, .7);
-		driveFor(-42, 200, .5);
+		driveFor(37, 200, .7);
+		sleep(300);
+		driveFor(-44, 200, .5);
 		sleep(200);
 		rotForGyro(-84, 4);			//rotForGyro(84);
 		sleep(200);
@@ -1180,8 +1181,19 @@
 		pew(); //launch only after 14.5 second mark
 	}
 	
-	void progskills() {
-		
+	void progskills(int side=LEFT) {
+		//outtake();
+		smak();
+		sleep(200);
+		driveFor(35, 200, 1);		//flip back cap
+		smak();
+		sleep(100);
+		smak();
+		sleep(300);
+		driveFor(-14, 200, 1);		
+		rotForGyro(side*-45);
+		driveFor(14, 200, 1);
+		smak();
 	}
 
 	void testing(motor *m, int vel) {
@@ -1248,7 +1260,8 @@
 		
 		//backCap(RIGHT);
 		//backPark(RIGHT);
-        wannabeReliableLeft();
+		progskills();
+        //wannabeReliableLeft();
 		//park();
 		//testing(&Catapult, 200);
 		//sleep(100);
