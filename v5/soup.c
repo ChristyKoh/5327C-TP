@@ -277,10 +277,12 @@
 	} */
 
 	void resetBaseEnc() {
-		FL_Base.resetRotation();
-		FR_Base.resetRotation();
-		BL_Base.resetRotation();
-		BR_Base.resetRotation();
+		// FL_Base.resetRotation();
+		// FR_Base.resetRotation();
+		// BL_Base.resetRotation();
+		// BR_Base.resetRotation();
+		TrackerL.resetRotation();
+		TrackerR.resetRotation();
 	}
 
 	void drive(int vel) { // + fwd - rev
@@ -498,14 +500,15 @@
 	void driveFor(int dist, int max=200, double kP=0.5, bool noStop=false, bool keepRot=false) {
 		initRot = GyroYaw.value(rotationUnits::deg);
 		drivetime = Brain.timer(timeUnits::msec);
+		resetBaseEnc();
 		//avgBaseFwd = (int) (FL_Base.rotation(rotationUnits::deg) - FR_Base.rotation(rotationUnits::deg) + BL_Base.rotation(rotationUnits::deg) - BR_Base.rotation(rotationUnits::deg))>>2;
 		
 		//dist/pi/2.75 * 360
 		
 		//kP = 0.5;
 		kPr = 3;
-		goal = dist*42; //multiplier in to deg
-		derr = goal - ((EncL + EncR)>>1);
+		goal = dist*42; //multiplier in to deg of encoder
+		derr = goal - EncR;
 		
 		//accelerate to 200rpm in 100ms
 		
@@ -529,13 +532,13 @@
 			//Brain.Screen.printAt(0,140,"%d %d", power, FL);
 			power = derr * kP;
 			power = power>max ? max : power;
-			Brain.Screen.printAt(0,120, "error: %d", power);		
-			/* if(keepRot) {
+			Brain.Screen.printAt(0,120, "power: %d", power);		
+			/*if(keepRot) {
 				rotDiff = (GyroYaw.value(rotationUnits::deg)-initRot) * kPr;
 				driveLR(power - rotDiff, power + rotDiff);
 			}
-			else drive(power);  */
-			derr = goal - ((EncL + EncR)>>1);
+			else drive(power);*/
+			derr = goal - EncR;
 			sleep(5); //otherwise taking difference is meaningless
 		}
 		if(!noStop) stopBase();
@@ -657,14 +660,14 @@
 	void rotForGyro(int deg, double kP=4){
 		initGyro = GyroYaw.value(rotationUnits::deg);
 		goal = deg;
-		derr = goal*1.1 - (GyroYaw.value(rotationUnits::deg) - initGyro);
+		derr = goal - (GyroYaw.value(rotationUnits::deg) - initGyro)*0.9;
 		
 		while(abs(derr) > 0.05) {
 			//Brain.Screen.printAt(0,180,"%d %d", power, FL);
 			power = derr * kP;
 			power = power>200 ? 200 : power;
 			rot(power);
-			derr = goal*1.055 - (GyroYaw.value(rotationUnits::deg) - initGyro); //constant: 1.07
+			derr = goal - (GyroYaw.value(rotationUnits::deg) - initGyro)*0.9; //constant: 1.07
 			sleep(5); //otherwise taking difference is meaningless
 		}
 		stopBase();
@@ -688,7 +691,7 @@
 			EncL = - TrackerL.rotation(rotationUnits::deg);
 			EncR = - TrackerR.rotation(rotationUnits::deg);
 			
-			Brain.Screen.printAt(0,100, "Gyro: %.2f", GyroYaw.value(rotationUnits::deg));
+			Brain.Screen.printAt(0,100, "Gyro: %.2f", GyroYaw.value(rotationUnits::deg)*0.9);
 			//Brain.Screen.printAt(0,120, "GyroPitch: %.2f", GyroPitch.value(rotationUnits::deg));
 			//Brain.Screen.printAt(0,180,"flipper rotation is %f", Flipper.rotation(rotationUnits::deg));
 			//Brain.Screen.printAt(10,40, "%d", TopColBumper.value());
@@ -698,6 +701,7 @@
 			
 			Brain.Screen.printAt(0,160, "Left: %d", EncL);
 			Brain.Screen.printAt(0,180, "Right: %d", EncR);
+			Brain.Screen.printAt(0,200, "derr: %d", derr);
 			
 			//Brain.Screen.printAt(0,100, "Average Base Drive: %d", avgBaseFwd);
 			//Brain.Screen.printAt(0,120, "Average Base Rotation: %d", avgBaseRot);
@@ -957,6 +961,15 @@
 	void test() {
 		driveFor(10);
 	}
+	void test2() {
+		rotForGyro(90);
+	}
+	void test3() {
+		rotForGyro(-90);
+	}
+	void test4() {
+		driveFor(24);
+	}
 
 	int mainCallback() {
 		for(;;){
@@ -968,12 +981,12 @@
 			
 		  //COMMENT OUT DURING COMPETITION
 		  //Controller.ButtonLeft.pressed(resetCat);
-		  Controller.ButtonLeft.pressed(toggleMode);
+		  Controller.ButtonLeft.pressed(test4);
 		  Controller.ButtonRight.pressed(test);
 		  //Controller.ButtonRight.pressed(flipReset);
 
-		  //Controller.ButtonUp.pressed(foldUp);
-		  //Controller.ButtonDown.pressed(flipDown);
+		  Controller.ButtonUp.pressed(test2);
+		  Controller.ButtonDown.pressed(test3);
 		  //Controller.ButtonB.pressed(flipOne);
 		  
 		  Controller.ButtonR1.pressed(pew);
