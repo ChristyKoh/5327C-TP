@@ -38,7 +38,19 @@
 	bool isBraking = false;
 	int FB, LR, T, Lift;
 	int FL, FR, BL, BR, BL2, BR2;
-	float initGyro;
+	float initGyro, Yaw;
+	int trueSpeed[] =  {0,  3,  3,  3,  3,  3,  10, 10, 10, 10,
+						10, 10, 10, 10, 12, 12, 12, 12, 12, 12,
+						14, 14, 14, 14, 14, 14, 20, 20, 20, 20,
+						20, 20, 20, 25, 25, 25, 25, 25, 25, 30, 
+						30, 30, 30, 30, 30, 45, 45, 45, 45, 45, 
+						45, 45, 45, 55, 55, 55, 55, 66, 66, 66, 
+						66, 79, 79, 79, 79, 79, 89, 89, 89, 89, 
+						89, 89, 89, 95, 95, 95, 99, 99, 99, 99, 
+						104,104,104,107,107,107,113,113,113,113,
+						113,116,116,116,116,123,123,123,127,127,
+						127};
+
 	
 	//catapult
 	bool isCatapultReady = false;
@@ -63,7 +75,7 @@
 	//autonomous
 	int driveThread_distance;
 	int driveThread_max = 200;
-	int driveThread_kP = 0.5;
+	float driveThread_kP = 0.5;
 
 	//timers
 	double ledtime, modetime, drivetime, catprimetime, colprimetime, torquetime, lifttime;
@@ -73,6 +85,18 @@
 	void sleep(int t) {
 		task::sleep(t);
 	}
+	
+	int returnTrueSpeed (int controllerVal) {
+        int trueSpeedVal = 0;
+        if (controllerVal >= 0) {
+            trueSpeedVal = (int)(100.0/127*(trueSpeed[abs(controllerVal)]));
+        }
+        else if (controllerVal < 0) {
+            trueSpeedVal = (int)(100.0/127*(-trueSpeed[abs(controllerVal)]));
+        }
+        return trueSpeedVal;
+    }
+
 
 	void toggleLEDs() {
 		if((Brain.timer(timeUnits::msec)-ledtime) > 300){
@@ -109,19 +133,19 @@
 	}
 
 	void intake() {
-		canStopLift = false;
+		//canStopLift = false;
 		Intake.spin(directionType::fwd, 600, velocityUnits::rpm);
 		//Intake2.spin(directionType::rev, 600, velocityUnits::rpm);
 	}
 
 	void intakeSpeed(int s) {
-		canStopLift = false;
+		//canStopLift = false;
 		Intake.spin(directionType::fwd, s, velocityUnits::rpm);
 		//Intake2.spin(directionType::rev, s, velocityUnits::rpm);
 	}
 
 	void outtake() {
-		canStopLift = false;
+		//canStopLift = false;
 		Intake.spin(directionType::rev, 600, velocityUnits::rpm);
 		//Intake2.spin(directionType::fwd, 600, velocityUnits::rpm);
 	}
@@ -327,35 +351,7 @@
 		BL = -vel;
 		BR = -vel;
 	}
-
-	void driveRot(int deg, bool waitForCompletion=false, int vel=200) {
-		if(waitForCompletion){
-			FL_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			FR_Base.rotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BL_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BR_Base.rotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
-		} else {
-			FL_Base.startRotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			FR_Base.startRotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BL_Base.startRotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BR_Base.startRotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
-		}
-	}
-
-	void strafeRot(int deg, bool waitForCompletion=false, int vel=200) {
-		if(waitForCompletion){
-			FL_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			FR_Base.rotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BL_Base.rotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BR_Base.rotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
-		} else {
-			FL_Base.startRotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			FR_Base.startRotateFor(deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BL_Base.startRotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
-			BR_Base.startRotateFor(-deg,rotationUnits::deg,vel,velocityUnits::rpm);
-		}
-	}
-
+	
 	int stepVel;
 	int stepDelay;
 
@@ -430,6 +426,18 @@
 		BL_Base.stop();
 		BR_Base.stop();
 	}
+	
+	void brakeBase() {
+		FR = 0;
+		FL = 0;
+		BR = 0;
+		BL = 0;
+		
+		FL_Base.stop(brakeType::brake);
+		FR_Base.stop(brakeType::brake);
+		BL_Base.stop(brakeType::brake);
+		BR_Base.stop(brakeType::brake);
+	}
 
 	void driveTime(int vel, int time) {
 		drive(vel);
@@ -447,12 +455,49 @@
 	//////////////////////////////////////////////////////   ODOMETRY   /////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	int derr, power, goal, aSign, aStep, initRot, rotDiff;
-	double kPr;
+	int power, goal, aSign, aStep, initRot, rotDiff, EncRI, EncLI;
+	double derr, kPr;
+	
+	void rotTo(int deg, double kP=2.5){ //using gyro
+		isAutonBase = true;
+		goal = deg;
+		derr = goal - Yaw;
+		
+		while(abs(derr) > 0.05) {
+			//Brain.Screen.printAt(0,180,"%d %d", power, FL);
+			power = derr * kP;
+			power = power>200 ? 200 : power;
+			rot(power);
+			derr = goal - Yaw; 
+			sleep(5); //otherwise taking difference is meaningless
+		}
+		brakeBase();
+		isAutonBase = false;
+	}
+	
+	void rotFor(int deg, double kP=2.5){
+		isAutonBase = true;
+		initGyro = Yaw;
+		goal = deg;
+		derr = goal - (Yaw - initGyro);
+		
+		while(abs(derr) >=1) {
+			//Brain.Screen.printAt(0,180,"%d %d", power, FL);
+			power = derr * kP;
+			power = power>200 ? 200 : power;
+			rot(power);
+			derr = goal - (Yaw - initGyro);
+			sleep(5); //otherwise taking difference is meaningless
+		}
+		//rot(0);
+		brakeBase();
+		isAutonBase = false;
+	}
 
 	void driveForOld(int dist, int max=200, double kP=0.5, bool noStop=false, bool keepRot=false) {
 		// diameter 2.75 in, radius 1.375 in
 		// inches to degrees
+		isAutonBase = true;
 		resetBaseEnc();
 		initRot = GyroYaw.value(rotationUnits::deg);
 		drivetime = Brain.timer(timeUnits::msec);
@@ -493,56 +538,69 @@
 			derr = goal - ((BaseL - BaseR)>>2);
 			sleep(5); //otherwise taking difference is meaningless
 		}
-		if(!noStop) stopBase();
+		if(!noStop) {
+			stopBase();
+		}
+		isAutonBase = false;
 		//Brain.Screen.printAt(0,120,"Drive distance reached.");
 	}
 	
-	void driveFor(int dist, int max=200, double kP=0.5, bool noStop=false, bool keepRot=false) {
-		initRot = GyroYaw.value(rotationUnits::deg);
+	void driveFor(int dist, int max=150, double kP=0.2, bool keepRot=false, bool brake=false) {
+		isAutonBase = true;
+		initRot = Yaw;
 		drivetime = Brain.timer(timeUnits::msec);
-		resetBaseEnc();
+		EncRI = EncR;
 		//avgBaseFwd = (int) (FL_Base.rotation(rotationUnits::deg) - FR_Base.rotation(rotationUnits::deg) + BL_Base.rotation(rotationUnits::deg) - BR_Base.rotation(rotationUnits::deg))>>2;
 		
 		//dist/pi/2.75 * 360
 		
 		//kP = 0.5;
 		kPr = 3;
-		goal = dist*42; //multiplier in to deg of encoder
-		derr = goal - EncR;
+		goal = dist*40; //multiplier in to deg of encoder
+		derr = goal - EncR + EncRI;
+		//Lerr = goal - EncL + EncLI;
+		//acceleration is too slow.
+		//accelerate to 200rpm in 200ms
 		
-		//accelerate to 200rpm in 100ms
+		//aStep = copysign(5,dist);
+		//aSign = copysign(1,dist);
+		if(dist > 0) {
+ 			for(int c=0; c<=max; c+=5) {
+				//driveLR(c*aStep, c*aStep+aSign*20);
+				drive(c);
+				task::sleep(5);
+			}
+		} else {
+			//Brain.Screen.printAt(0,180,"Negative");
+			for(int c=0; c<=max; c+=5) {
+				driveLR(c, c-30);
+				//drive(c*aSign);
+				task::sleep(5);
+			}
+		} 
 		
-		// aStep = copysign(1,dist)*5;
-		// aSign = copysign(1,dist);
-		// if(dist > 0) {
-			// for(int c=0; c<40; c++) {
-				// driveLR(c*aStep, c*aStep+aSign*20);
-				// task::sleep(6);
-			// }
-		// } else {
-			////Brain.Screen.printAt(0,180,"Negative");
-			// for(int c=0; c<40; c++) {
-				// driveLR(c*aStep+aSign*30, c*aStep);
-				// task::sleep(6);
-			// }
-		// }
+		if(abs(kP*derr) < max) kP = abs(max/derr); //smooth the transition
 		
 		//p to goal
-		while(abs(derr) > 3) {
+		while(abs(derr) > 10) {
 			//Brain.Screen.printAt(0,140,"%d %d", power, FL);
 			power = derr * kP;
 			power = power>max ? max : power;
 			Brain.Screen.printAt(0,120, "power: %d", power);		
-			/*if(keepRot) {
-				rotDiff = (GyroYaw.value(rotationUnits::deg)-initRot) * kPr;
+			if(keepRot) {
+				rotDiff = ((Yaw)-initRot) * kPr;
 				driveLR(power - rotDiff, power + rotDiff);
 			}
-			else drive(power);*/
-			derr = goal - EncR;
+			else drive(power);
+			derr = goal - EncR + EncRI;
 			sleep(5); //otherwise taking difference is meaningless
 		}
-		if(!noStop) stopBase();
+		if(brake) brakeBase();
+		else stopBase();
+		
+		if(abs(Yaw-initRot) > 1) rotTo(initRot, 2); //correction
 		//Brain.Screen.printAt(0,120,"Drive distance reached.");
+		isAutonBase = false;
 	}
 	
 	void strafeFor(int dist, double kP=0.7, bool keepRot=true) {
@@ -618,7 +676,7 @@
 		stopBase();
 	}
 
-	void rotFor(int deg, double kP=0.9) {
+	/* void rotFor(int deg, double kP=0.9) {
 		// radius of turning is approx 8 inches
 		// given degrees, convert to radians and * r to find dist
 		// from dist, /2.75/pi to get degrees motor
@@ -626,12 +684,12 @@
 		
 		resetBaseEnc();
 		
-		//kP = 0.9;
+		// kP = 0.9;
 		goal = deg * 5.7;
 		derr = goal - ((BaseR + BaseL)>>2);
 		
 		while(abs(derr) > 3) {
-			//Brain.Screen.printAt(0,180,"%d %d", power, FL);
+			// Brain.Screen.printAt(0,180,"%d %d", power, FL);
 			power = derr * kP;
 			power = power>200 ? 200 : power;
 			rot(power);
@@ -639,39 +697,8 @@
 			sleep(5); //otherwise taking difference is meaningless
 		}
 		stopBase();
-		//Brain.Screen.printAt(0,140,"Drive distance reached.");
-	}
-
-	void rotTo(int deg, double kP=4){ //using gyro
-		goal = deg;
-		derr = goal*1.1 - GyroYaw.value(rotationUnits::deg);
-		
-		while(abs(derr) > 0.05) {
-			//Brain.Screen.printAt(0,180,"%d %d", power, FL);
-			power = derr * kP;
-			power = power>200 ? 200 : power;
-			rot(power);
-			derr = goal*1.055 - GyroYaw.value(rotationUnits::deg); //constant: 1.07
-			sleep(5); //otherwise taking difference is meaningless
-		}
-		stopBase();
-	}
-	
-	void rotForGyro(int deg, double kP=4){
-		initGyro = GyroYaw.value(rotationUnits::deg);
-		goal = deg;
-		derr = goal - (GyroYaw.value(rotationUnits::deg) - initGyro)*0.9;
-		
-		while(abs(derr) > 0.05) {
-			//Brain.Screen.printAt(0,180,"%d %d", power, FL);
-			power = derr * kP;
-			power = power>200 ? 200 : power;
-			rot(power);
-			derr = goal - (GyroYaw.value(rotationUnits::deg) - initGyro)*0.9; //constant: 1.07
-			sleep(5); //otherwise taking difference is meaningless
-		}
-		stopBase();
-	}
+		// Brain.Screen.printAt(0,140,"Drive distance reached.");
+	} */
 
 	void align() {
 		if(amIBlue) Vision.takeSnapshot(CAPBLUE);
@@ -691,7 +718,9 @@
 			EncL = - TrackerL.rotation(rotationUnits::deg);
 			EncR = - TrackerR.rotation(rotationUnits::deg);
 			
-			Brain.Screen.printAt(0,100, "Gyro: %.2f", GyroYaw.value(rotationUnits::deg)*0.9);
+			Yaw = GyroYaw.value(rotationUnits::deg)*0.9;
+			
+			Brain.Screen.printAt(0,100, "Gyro: %.2f", Yaw);
 			//Brain.Screen.printAt(0,120, "GyroPitch: %.2f", GyroPitch.value(rotationUnits::deg));
 			//Brain.Screen.printAt(0,180,"flipper rotation is %f", Flipper.rotation(rotationUnits::deg));
 			//Brain.Screen.printAt(10,40, "%d", TopColBumper.value());
@@ -701,7 +730,7 @@
 			
 			Brain.Screen.printAt(0,160, "Left: %d", EncL);
 			Brain.Screen.printAt(0,180, "Right: %d", EncR);
-			Brain.Screen.printAt(0,200, "derr: %d", derr);
+			Brain.Screen.printAt(0,200, "derr: %.2f", derr);
 			
 			//Brain.Screen.printAt(0,100, "Average Base Drive: %d", avgBaseFwd);
 			//Brain.Screen.printAt(0,120, "Average Base Rotation: %d", avgBaseRot);
@@ -942,7 +971,10 @@
 			//BR_Base.spin(directionType::rev,isBallMode*1.6*(FB - isBallMode*T + LR),velocityUnits::rpm);
 			BR_Base.spin(directionType::fwd, BR, velocityUnits::rpm);
             BR_Base2.spin(directionType::fwd, BR, velocityUnits::rpm);
-			if (BR == 0) BR_Base.stop();
+			if (BR == 0) {
+				BR_Base.stop();
+				BR_Base2.stop();
+			} 
 			task::sleep(2);
 		}
 		return 1;
@@ -952,20 +984,33 @@
 			//BL_Base.spin(directionType::fwd,isBallMode*1.6*(FB + isBallMode*T - LR),velocityUnits::rpm);
 			BL_Base.spin(directionType::fwd, BL, velocityUnits::rpm);
             BL_Base2.spin(directionType::fwd, BL, velocityUnits::rpm);
-			if (BL == 0) BL_Base.stop();
+			if (BL == 0) {
+				BL_Base.stop();
+				BL_Base2.stop();
+			}
 			task::sleep(2);
 		}
 		return 1;
 	}
 	
 	void test() {
-		driveFor(10);
+		intakeSpeed(140);
+		driveFor(34, 200, 0.25);
+		intake();
+		sleep(300);
+		rotFor(115);
+		sleep(200);
+		outtake();
+		driveFor(20);
+		sleep(200);
+		//rotTo(45);
+		intakeStop();
 	}
 	void test2() {
-		rotForGyro(90);
+		driveFor(13);
 	}
 	void test3() {
-		rotForGyro(-90);
+		driveFor(-10);
 	}
 	void test4() {
 		driveFor(24);
@@ -1011,8 +1056,33 @@
 	
 	///////////////////////////////////////// AUTONS /////////////////////////////////////////////////////////////////	
 
+	void fetch() {
+		intakeSpeed(140);
+		driveFor(34, 200, 0.25);
+		intake();
+		sleep(300);
+	}
 	
+	void fetchFlip() {
+		
+	}
+
+	void FrontNearCol(int side=RIGHT) {
+		fetchFlip();
+		
+	}
 	
+	void FrontCenterCol(int side=RIGHT) {
+		fetchFlip();
+	}
+	
+	void BackNearCol(int side=RIGHT) {
+		fetch();
+	}
+	
+	void BackNearPark(int side=RIGHT) {
+		
+	}
 	/*---------------------------------------------------------------------------*/
 	/*                          Pre-Autonomous Functions                         */
 	/*                                                                           */
@@ -1034,10 +1104,10 @@
 		amIBlue = true;
 		areLEDsOn = false;		
 		
-		BL_Base.setStopping(brakeType::hold);
-		BR_Base.setStopping(brakeType::hold);
-		FL_Base.setStopping(brakeType::hold);
-		FR_Base.setStopping(brakeType::hold);
+		// BL_Base.setStopping(brakeType::hold);
+		// BR_Base.setStopping(brakeType::hold);
+		// FL_Base.setStopping(brakeType::hold);
+		// FR_Base.setStopping(brakeType::hold);
 	}
 
 	/*---------------------------------------------------------------------------*/
@@ -1053,6 +1123,8 @@
 	void autonomous( void ) {
 		Brain.Screen.print("Robot is in Autonomous mode");
 		Brain.resetTimer();
+		
+		
 		
 		//testing(&Catapult, 200);
 		//sleep(100);
